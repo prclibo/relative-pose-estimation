@@ -11,3 +11,8 @@
 *.lai
 *.la
 *.a
+
+build/
+*.swp
+*.bak
+*.sav
