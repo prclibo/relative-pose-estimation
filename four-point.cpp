@@ -93,7 +93,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 {
     int n_samples = 10; 
     int n_iters = 200; 
-    double residual_threshold = 1e-15; 
+    double residual_threshold = 1e-20; 
     double same_root_threshold = 1e-3; 
 
     // Sample initial solutions
@@ -145,7 +145,8 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
                gsl_vector_get (solver->f, 0),
                gsl_vector_get (solver->f, 1), 
                gsl_vector_get (solver->f, 0) * gsl_vector_get (solver->f, 0) + gsl_vector_get (solver->f, 1) * gsl_vector_get (solver->f, 1)); 
-        }                */
+                        */
+        }
         if (status == GSL_SUCCESS) 
         {
             double t0, t1; 
@@ -194,7 +195,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 
 void four_point(cv::InputArray _points1, cv::InputArray _points2, 
                 double angle, double focal, cv::Point2d pp, 
-                cv::OutputArrayOfArrays rvecs, cv::OutputArrayOfArrays tvecs)
+                cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs)
 {
     Mat points1, points2; 
 	_points1.getMat().copyTo(points1); 
@@ -233,14 +234,39 @@ void four_point(cv::InputArray _points1, cv::InputArray _points2,
     double k3 = sin(angle); 
     
     vector<double> a(56), b(56); 
-    four_point_helper(k1, k2, k3, x1, y1, x2, y2, &a[0],&b[0]); 
-    
-    std::cout << Mat(a) << std::endl; 
-    std::cout << Mat(b) << std::endl; 
+    four_point_get_ab(k1, k2, k3, x1, y1, x2, y2, &a[0],&b[0]); 
     
     vector<double> rx, ry, rz; 
     solve_roots(a, b, rx, ry, rz); 
+    
+       
+    int n = rx.size(); 
+    _rvecs.create(n * 2, 1, CV_64FC3); 
+    _tvecs.create(n * 2, 1, CV_64FC3); 
 
+    double m[12]; 
+    Mat M(4, 3, CV_64F, m); 
+    for (int i = 0; i < rx.size(); i++)
+    {
+        _rvecs.create(3, 1, CV_64F, i * 2, true); 
+        _tvecs.create(3, 1, CV_64F, i * 2, true); 
+        _rvecs.create(3, 1, CV_64F, i * 2 + 1, true); 
+        _tvecs.create(3, 1, CV_64F, i * 2 + 1, true); 
+        
+        Mat rvec = (Mat_<double>(3, 1) << rx[i], ry[i], rz[i]); 
+        rvec *= angle; 
+
+        Mat tvec; 
+        four_point_get_M(k1, k2, k3, x1, y1, x2, y2, rx[i], ry[i], rz[i], m); 
+        SVD::solveZ(M, tvec); 
+
+        rvec.copyTo(_rvecs.getMat(i * 2)); 
+        tvec.copyTo(_tvecs.getMat(i * 2)); 
+
+        tvec = -tvec; 
+        rvec.copyTo(_rvecs.getMat(i * 2 + 1)); 
+        tvec.copyTo(_tvecs.getMat(i * 2 + 1)); 
+    }
 
 
 /*  // Check if differetial function is right. 
@@ -311,5 +337,12 @@ int main()
 
     std::vector<Mat> rvecs, tvecs; 
     four_point(x1s, x2s,norm(rvec),  1.0, Point2d(0, 0), rvecs, tvecs); 
+
+
+    for (int i = 0; i < rvecs.size(); i++)
+    {
+        std::cout << rvecs[i] << " " << tvecs[i] << std::endl; 
+    }
+
 
 }
