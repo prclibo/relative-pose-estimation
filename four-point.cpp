@@ -89,38 +89,42 @@ int four_point_fdf(const gsl_vector * t, void * ab, gsl_vector * f, gsl_matrix *
     return GSL_SUCCESS; 
 }
 
-void solve_roots(double a[56], double b[56])
+void solve_roots(const vector<double> & a, const vector<double> & b, vector<double> & rx, vector<double> & ry, vector<double> & rz)
 {
     int n_samples = 10; 
     int n_iters = 200; 
+    double residual_threshold = 1e-15; 
+    double same_root_threshold = 1e-3; 
 
-    // Sample
-    vector<double> t0s, t1s; 
-    double t0, t1; 
-    for (t0 = 0; t0 <= 1.0; t0 += 1.0 / (n_samples - 1.0))
-        for (t1 = 0; t1 <= 1.0; t1 += 1.0 / (n_samples - 1.0))
+    // Sample initial solutions
+    vector<double> t0_initial, t1_initial; 
+    for (double t0 = 0; t0 <= 1.0; t0 += 1.0 / (n_samples - 1.0))
+        for (double t1 = 0; t1 <= 1.0; t1 += 1.0 / (n_samples - 1.0))
         {
-            t0s.push_back(t0); 
-            t1s.push_back(t1); 
+            t0_initial.push_back(t0); 
+            t1_initial.push_back(t1); 
         }
 
-    // Solve
+
+    // Refine solutions
     double ab[56 * 2]; 
-    memcpy(ab, a, sizeof(double) * 56); 
-    memcpy(ab + 56, b, sizeof(double) * 56); 
+    memcpy(ab, &a[0], sizeof(double) * 56); 
+    memcpy(ab + 56, &b[0], sizeof(double) * 56); 
     gsl_multiroot_function_fdf f = {&four_point_f, &four_point_df, &four_point_fdf, 2, (void*)ab};     
 
+    
     const gsl_multiroot_fdfsolver_type *solver_type; 
     gsl_multiroot_fdfsolver * solver; 
 
     solver_type = gsl_multiroot_fdfsolver_hybridsj; 
     solver = gsl_multiroot_fdfsolver_alloc(solver_type, 2); 
 
-    for (int i = 0; i < t0s.size(); i++)
+    vector<double> t0_final, t1_final; 
+    for (int i = 0; i < t0_initial.size(); i++)
     {
         gsl_vector *t = gsl_vector_alloc(2); 
-        gsl_vector_set(t, 0, t0s[i]); 
-        gsl_vector_set(t, 1, t1s[i]); 
+        gsl_vector_set(t, 0, t0_initial[i]); 
+        gsl_vector_set(t, 1, t1_initial[i]); 
         
         gsl_multiroot_fdfsolver_set(solver, &f, t); 
         
@@ -129,22 +133,61 @@ void solve_roots(double a[56], double b[56])
         {
             status = gsl_multiroot_fdfsolver_iterate(solver); 
             if (status) break; 
-            status = gsl_multiroot_test_residual(solver->f, 1e-15); 
+            status = gsl_multiroot_test_residual(solver->f, residual_threshold); 
             if (status != GSL_CONTINUE) break;
             
-            printf ("iter = %3u x = % .3f % .3f "
-               "f(x) = % .3e % .3e\n",
+/*            printf ("iter = %3u x = % .3f % .3f "
+               "f(x) = % .3e % .3e "
+               "f^2 = % .3e\n",
                iter,
                gsl_vector_get (solver->x, 0),
                gsl_vector_get (solver->x, 1),
                gsl_vector_get (solver->f, 0),
-               gsl_vector_get (solver->f, 1));
-        }                
-        printf ("status = %s\n", gsl_strerror (status));
+               gsl_vector_get (solver->f, 1), 
+               gsl_vector_get (solver->f, 0) * gsl_vector_get (solver->f, 0) + gsl_vector_get (solver->f, 1) * gsl_vector_get (solver->f, 1)); 
+        }                */
+        if (status == GSL_SUCCESS) 
+        {
+            double t0, t1; 
+            int j, k; 
+
+            t0 = gsl_vector_get(solver->x, 0); 
+            t1 = gsl_vector_get(solver->x, 1); 
+
+            for (j = 0; j < t0_final.size(); j++) 
+            {
+                if ((t0 - t0_final[j]) * (t0 - t0_final[j]) + 
+                    (t1 - t1_final[j]) * (t1 - t1_final[j]) < 
+                    same_root_threshold * same_root_threshold)
+                    break; 
+            }
+
+            if (j >= t0_final.size()) 
+            {
+                t0_final.push_back(t0); 
+                t1_final.push_back(t1); 
+            }
+        } 
+
         gsl_vector_free(t); 
     }
 
     gsl_multiroot_fdfsolver_free(solver); 
+
+    rx.clear(); 
+    ry.clear(); 
+    rz.clear(); 
+    for (int i = 0; i < t0_final.size(); i++)    
+    {
+        double t0 = t0_final[i]; 
+        double t1 = t1_final[i]; 
+
+        double theta = acos(2.0 * t0 - 1.0); 
+        double psi = 2.0 * CV_PI * t1; 
+        rx.push_back(sin(theta) * cos(psi)); 
+        ry.push_back(sin(theta) * sin(psi)); 
+        rz.push_back(cos(theta)); 
+    }
 
 }
 
@@ -189,14 +232,44 @@ void four_point(cv::InputArray _points1, cv::InputArray _points2,
     double k2 = 1.0 - k1; 
     double k3 = sin(angle); 
     
-    double a[56], b[56]; 
-    four_point_helper(k1, k2, k3, x1, y1, x2, y2, a, b); 
+    vector<double> a(56), b(56); 
+    four_point_helper(k1, k2, k3, x1, y1, x2, y2, &a[0],&b[0]); 
     
-    std::cout << Mat(1, 56, CV_64F, a) << std::endl; 
-    std::cout << Mat(1, 56, CV_64F, b) << std::endl; 
+    std::cout << Mat(a) << std::endl; 
+    std::cout << Mat(b) << std::endl; 
     
-    solve_roots(a, b); 
+    vector<double> rx, ry, rz; 
+    solve_roots(a, b, rx, ry, rz); 
 
+
+
+/*  // Check if differetial function is right. 
+
+    double ab[56 * 2]; 
+    memcpy(ab, a, sizeof(double) * 56); 
+    memcpy(ab + 56, b, sizeof(double) * 56); 
+
+    gsl_vector * t = gsl_vector_alloc(2); 
+    gsl_vector * tt = gsl_vector_alloc(2); 
+    gsl_vector_set(t, 0, 0.01); 
+    gsl_vector_set(t, 1, 0.01); 
+    gsl_vector_set(tt, 0, 0.01 + 1e-7); 
+    gsl_vector_set(tt, 1, 0.01); 
+
+    gsl_vector * f = gsl_vector_alloc(2); 
+    gsl_vector * ff = gsl_vector_alloc(2); 
+    gsl_matrix * J = gsl_matrix_alloc(2, 2); 
+    four_point_f(t, ab, f); 
+    four_point_f(tt, ab, ff); 
+    four_point_df(t, ab, J); 
+
+    std::cout << gsl_matrix_get(J, 0, 0) << " " << gsl_matrix_get(J, 0, 1) << std::endl; 
+    std::cout << gsl_matrix_get(J, 1, 0) << " " << gsl_matrix_get(J, 1, 1) << std::endl; 
+    std::cout << (gsl_vector_get(f, 0) - gsl_vector_get(ff, 0)) / (gsl_vector_get(t, 0) - gsl_vector_get(tt, 0)) <<std::endl;  
+    std::cout << (gsl_vector_get(f, 1) - gsl_vector_get(ff, 1)) / (gsl_vector_get(t, 0) - gsl_vector_get(tt, 0)) <<std::endl; 
+*/
+
+    
 
 }
 
