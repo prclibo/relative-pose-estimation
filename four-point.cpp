@@ -1,4 +1,5 @@
 #include <opencv2/opencv.hpp>
+#include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
 #include "four-point.hpp"
 
