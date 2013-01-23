@@ -3,6 +3,10 @@
 
 #include <opencv2/opencv.hpp>
 
+void findPose(cv::InputArray points1, cv::InputArray points2, 
+              double angle, double focal, cv::Point2d pp, 
+              cv::OutputArrayOfArrays rvecs, cv::OutputArrayOfArrays tvecs); 
+
 void four_point(cv::InputArray points1, cv::InputArray points2, 
                 double angle, double focal, cv::Point2d pp, 
                 cv::OutputArrayOfArrays rvecs, cv::OutputArrayOfArrays tvecs); 

@@ -93,7 +93,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 {
     int n_samples = 10; 
     int n_iters = 200; 
-    double residual_threshold = 1e-20; 
+    double residual_threshold = 1e-12; 
     double same_root_threshold = 1e-3; 
 
     // Sample initial solutions
@@ -136,16 +136,6 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
             status = gsl_multiroot_test_residual(solver->f, residual_threshold); 
             if (status != GSL_CONTINUE) break;
             
-/*            printf ("iter = %3u x = % .3f % .3f "
-               "f(x) = % .3e % .3e "
-               "f^2 = % .3e\n",
-               iter,
-               gsl_vector_get (solver->x, 0),
-               gsl_vector_get (solver->x, 1),
-               gsl_vector_get (solver->f, 0),
-               gsl_vector_get (solver->f, 1), 
-               gsl_vector_get (solver->f, 0) * gsl_vector_get (solver->f, 0) + gsl_vector_get (solver->f, 1) * gsl_vector_get (solver->f, 1)); 
-                        */
         }
         if (status == GSL_SUCCESS) 
         {
@@ -220,8 +210,6 @@ void four_point(cv::InputArray _points1, cv::InputArray _points2,
 
     points1 = points1.t(); 
     points2 = points2.t(); 
-    std::cout << points1 << std::endl; 
-    std::cout << points2 << std::endl; 
 
     CV_Assert(points1.isContinuous() && points2.isContinuous()); 
     double *x1 = points1.ptr<double>(0); 
@@ -268,50 +256,63 @@ void four_point(cv::InputArray _points1, cv::InputArray _points2,
         tvec.copyTo(_tvecs.getMat(i * 2 + 1)); 
     }
 
+}
 
-/*  // Check if differetial function is right. 
 
-    double ab[56 * 2]; 
-    memcpy(ab, a, sizeof(double) * 56); 
-    memcpy(ab + 56, b, sizeof(double) * 56); 
 
-    gsl_vector * t = gsl_vector_alloc(2); 
-    gsl_vector * tt = gsl_vector_alloc(2); 
-    gsl_vector_set(t, 0, 0.01); 
-    gsl_vector_set(t, 1, 0.01); 
-    gsl_vector_set(tt, 0, 0.01 + 1e-7); 
-    gsl_vector_set(tt, 1, 0.01); 
+class CvFourPointEstimator : public CvModelEstimator2
+{
+public:
+    CvFourPointEstimator(); 
+    virtual int runKernel( const CvMat* m1, const CvMat* m2, CvMat* model ); 
+protected: 
+    virtual void computeReprojError( const CvMat* m1, const CvMat* m2,
+                                     const CvMat* model, CvMat* error );
+}; 
 
-    gsl_vector * f = gsl_vector_alloc(2); 
-    gsl_vector * ff = gsl_vector_alloc(2); 
-    gsl_matrix * J = gsl_matrix_alloc(2, 2); 
-    four_point_f(t, ab, f); 
-    four_point_f(tt, ab, ff); 
-    four_point_df(t, ab, J); 
+CvFourPointEstimator::CvFourPointEstimator()
+: CvModelEstimator2( 4, cvSize(2,3),  20 )
+{
+}
 
-    std::cout << gsl_matrix_get(J, 0, 0) << " " << gsl_matrix_get(J, 0, 1) << std::endl; 
-    std::cout << gsl_matrix_get(J, 1, 0) << " " << gsl_matrix_get(J, 1, 1) << std::endl; 
-    std::cout << (gsl_vector_get(f, 0) - gsl_vector_get(ff, 0)) / (gsl_vector_get(t, 0) - gsl_vector_get(tt, 0)) <<std::endl;  
-    std::cout << (gsl_vector_get(f, 1) - gsl_vector_get(ff, 1)) / (gsl_vector_get(t, 0) - gsl_vector_get(tt, 0)) <<std::endl; 
-*/
 
-    
+// Notice to keep compatibility with opencv ransac, q1 and q2 have
+// to be of 1 row x n col x 2 channel. 
+int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* rvectvec )
+{
+	// Notice to keep notion consistence with our reference Matlab code, 
+	// in this function Q1 denotes right points while Q2 left. 
+	// Therefore, left q1 and right q2 are swap to Q2 and Q1. 
+	// Q1 and Q2 are Nx2 (with omitted third coord as 1). 
+	Mat Q1 = Mat(q1).reshape(1, q1->cols); 
+	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
+
+    std::vector<Mat> rvecs, tvecs; 
+    four_point(Q1, Q2, 1.0, Point2d(0, 0), rvecs, tvecs); 
+    double * rt = rvectvec->data.db; 
+    for (int i = 0; i < rvecs.size(); i++)
+    {
+        memcpy(rt + i * 6, rvecs[i].ptr<double>(), 3 * sizeof(double)); 
+        memcpy(rt + i * 6 + 3, tvecs[i].ptr<double>(), 3 * sizeof(double)); 
+    }
+ 
+    return rvecs.size(); 
 
 }
 
 int main()
 {
-    Mat rvec = (Mat_<float>(3, 1) << 0.1, 0.2, 0.3);    
-    Mat rmat, tvec = (Mat_<float>(3, 1) << 3, 2, 1); 
+    Mat rvec = (Mat_<float>(3, 1) << 0.4, 0.2, 0.3);    
+    Mat rmat, tvec = (Mat_<float>(3, 1) << 43, 2, 1); 
     Rodrigues(rvec, rmat); 
     std::cout << "Expected:" << std::endl; 
     std::cout << rmat << std::endl; 
     std::cout << tvec << std::endl; 
 
-    Mat Xs = (Mat_<float>(4, 3) << 10, 23, 34, 
-                                    -10, 12, 32, 
-                                    -4, 22, 11, 
-                                    15, -10, 21); 
+    Mat Xs = (Mat_<float>(4, 3) << 100, 223, 34, 
+                                    -10, 1412, 32, 
+                                    -4, 222, 11, 
+                                    152, -10, 21); 
     std::cout << Xs << std::endl; 
 
     Mat x1s = Xs.t(); 
