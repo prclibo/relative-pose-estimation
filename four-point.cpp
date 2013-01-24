@@ -2,6 +2,7 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
 #include "four-point.hpp"
+#include "_modelest.h"
 
 using namespace cv; 
 
@@ -116,7 +117,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
     const gsl_multiroot_fdfsolver_type *solver_type; 
     gsl_multiroot_fdfsolver * solver; 
 
-    solver_type = gsl_multiroot_fdfsolver_hybridsj; 
+    solver_type = gsl_multiroot_fdfsolver_hybridj; 
     solver = gsl_multiroot_fdfsolver_alloc(solver_type, 2); 
 
     vector<double> t0_final, t1_final; 
@@ -262,23 +263,25 @@ void four_point(cv::InputArray _points1, cv::InputArray _points2,
 
 class CvFourPointEstimator : public CvModelEstimator2
 {
+    double angle; 
 public:
-    CvFourPointEstimator(); 
+    CvFourPointEstimator( double _angle ); 
     virtual int runKernel( const CvMat* m1, const CvMat* m2, CvMat* model ); 
 protected: 
     virtual void computeReprojError( const CvMat* m1, const CvMat* m2,
                                      const CvMat* model, CvMat* error );
 }; 
 
-CvFourPointEstimator::CvFourPointEstimator()
-: CvModelEstimator2( 4, cvSize(2,3),  20 )
+CvFourPointEstimator::CvFourPointEstimator( double _angle )
+: CvModelEstimator2( 4, cvSize(4, 3),  20 ), 
+  angle( _angle ) 
 {
 }
 
 
 // Notice to keep compatibility with opencv ransac, q1 and q2 have
 // to be of 1 row x n col x 2 channel. 
-int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* rvectvec )
+int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _rmat_tvec )
 {
 	// Notice to keep notion consistence with our reference Matlab code, 
 	// in this function Q1 denotes right points while Q2 left. 
@@ -288,62 +291,59 @@ int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* rv
 	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
 
     std::vector<Mat> rvecs, tvecs; 
-    four_point(Q1, Q2, 1.0, Point2d(0, 0), rvecs, tvecs); 
-    double * rt = rvectvec->data.db; 
+    four_point(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
+    Mat rmat_tvec(_rmat_tvec); 
+
     for (int i = 0; i < rvecs.size(); i++)
     {
-        memcpy(rt + i * 6, rvecs[i].ptr<double>(), 3 * sizeof(double)); 
-        memcpy(rt + i * 6 + 3, tvecs[i].ptr<double>(), 3 * sizeof(double)); 
+        Mat rmat; 
+        Rodrigues(rvecs.at(i), rmat); 
+        rmat_tvec(Range(i * 3, i * 3 + 3), Range(0, 3)) = rmat * 1.0; 
+        rmat_tvec(Range(i * 3, i * 3 + 3), Range(3, 4)) = tvecs.at(i) * 1.0; 
     }
  
     return rvecs.size(); 
 
 }
 
-int main()
+
+// Same as the runKernel, m1 and m2 should be
+// 1 row x n col x 2 channels. 
+// And also, error has to be of CV_32FC1. 
+void CvFourPointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
+                                     const CvMat* model, CvMat* error )
 {
-    Mat rvec = (Mat_<float>(3, 1) << 0.4, 0.2, 0.3);    
-    Mat rmat, tvec = (Mat_<float>(3, 1) << 43, 2, 1); 
-    Rodrigues(rvec, rmat); 
-    std::cout << "Expected:" << std::endl; 
-    std::cout << rmat << std::endl; 
-    std::cout << tvec << std::endl; 
+    Mat X1(m1), X2(m2); 
+    int n = X1.cols; 
+    X1 = X1.reshape(1, n); 
+    X2 = X2.reshape(1, n); 
 
-    Mat Xs = (Mat_<float>(4, 3) << 100, 223, 34, 
-                                    -10, 1412, 32, 
-                                    -4, 222, 11, 
-                                    152, -10, 21); 
-    std::cout << Xs << std::endl; 
+    X1.convertTo(X1, CV_64F); 
+    X2.convertTo(X2, CV_64F); 
 
-    Mat x1s = Xs.t(); 
-    Mat x2s = rmat * Xs.t(); 
-    x2s.col(0) += tvec; 
-    x2s.col(1) += tvec; 
-    x2s.col(2) += tvec; 
-    x2s.col(3) += tvec; 
-    
-    x1s.row(0) /= x1s.row(2); 
-    x1s.row(1) /= x1s.row(2); 
-    x1s.row(2) /= x1s.row(2); 
-    
-    x2s.row(0) /= x2s.row(2); 
-    x2s.row(1) /= x2s.row(2); 
-    x2s.row(2) /= x2s.row(2); 
-    
-    x1s = x1s.t(); 
-    x2s = x2s.t(); 
+    Mat P(model); 
+    Mat tvec = P.colRange(3, 4) * 1.0; 
+    Mat rmat = P.colRange(0, 3) * 1.0; 
 
-    x1s = x1s.colRange(0, 2) * 1.0; 
-    x2s = x2s.colRange(0, 2) * 1.0; 
+    double * t = tvec.ptr<double>(); 
+    Mat tskew = (Mat_<double>(3, 3) << 0, -t[2], t[1], t[2], 0, -t[0], -t[1], t[0], 0); 
 
-    std::vector<Mat> rvecs, tvecs; 
-    four_point(x1s, x2s,norm(rvec),  1.0, Point2d(0, 0), rvecs, tvecs); 
-
-
-    for (int i = 0; i < rvecs.size(); i++)
+    Mat E = tskew * rmat; 
+    for (int i = 0; i < n; i++)
     {
-        std::cout << rvecs[i] << " " << tvecs[i] << std::endl; 
+        Mat x1 = (Mat_<double>(3, 1) << X1.at<double>(i, 0), X1.at<double>(i, 1), 1.0); 
+        Mat x2 = (Mat_<double>(3, 1) << X2.at<double>(i, 0), X2.at<double>(i, 1), 1.0); 
+        double x2tEx1 = x2.dot(E * x1); 
+        Mat Ex1 = E * x1; 
+        Mat Etx2 = E * x2; 
+        double a = Ex1.at<double>(0) * Ex1.at<double>(0); 
+        double b = Ex1.at<double>(1) * Ex1.at<double>(1); 
+        double c = Etx2.at<double>(0) * Etx2.at<double>(0); 
+        double d = Etx2.at<double>(0) * Etx2.at<double>(0); 
+
+        error->data.fl[i] = x2tEx1 * x2tEx1 / (a + b + c + d); 
     }
 
+}    
 
-}
+
