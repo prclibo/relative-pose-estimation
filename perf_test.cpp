@@ -7,6 +7,7 @@ int main()
     double bound = 100.0; 
 
     RNG rng; 
+    vector<double> t_angle; 
     for (int i = 0; i < 1000; i++)
     {
         Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F); 
@@ -59,6 +60,7 @@ int main()
         tvec /= norm(tvec); 
         int j; 
         std::cout << "===== " << i << " =====" << std::endl; 
+        if (rvecs_noise.empty()) {t_angle.push_back(CV_PI/2); continue; }
         for (j = 0; j < rvecs.size(); j++)
         {
             if (norm(rvec, rvecs[j]) + norm(tvec, tvecs[j]) < 1e-5)
@@ -70,14 +72,18 @@ int main()
         {
             double dist = 1e100; 
             int index; 
-            for (int k = 0; k < rvecs.size(); k++)
-                if (norm(rvec, rvecs[k]) + norm(rvec, rvecs[k]) < dist)
+            for (int k = 0; k < rvecs_noise.size(); k++)
+                if (norm(rvec, rvecs_noise[k]) + norm(rvec, rvecs_noise[k]) +
+                    norm(tvec, tvecs_noise[k]) + norm(rvec, rvecs_noise[k]) < dist)
                 {
-                    dist = norm(rvec, rvecs[k]) + norm(rvec, rvecs[k]); 
+                    dist = norm(rvec, rvecs_noise[k]) + norm(rvec, rvecs_noise[k]) +
+                           norm(tvec, tvecs_noise[k]) + norm(tvec, tvecs_noise[k]); 
                     index = k; 
                 }
-            std::cout << rvecs[index] << " " << tvecs[index] << std::endl; 
-            std::cout << rvecs_noise[index] << " " << tvecs_noise[index] << std::endl; 
+            t_angle.push_back(acos(tvecs_noise[index].dot(tvec))); 
+            std::cout << t_angle.back() << std::endl; 
+//            std::cout << rvecs[j] << " " << tvecs[j] << std::endl; 
+//            std::cout << rvecs_noise[index] << " " << tvecs_noise[index] << std::endl; 
 
 /*            std::cout << "=========" << i << "========================" << std::endl; 
             std::cout << rvec << tvec << std::endl; 
@@ -88,4 +94,7 @@ int main()
 */
         }
     }
+    Scalar mean, dev; 
+    meanStdDev(t_angle, mean, dev); 
+    std::cout << Mat(mean) << Mat(dev) << std::endl; ; 
 }

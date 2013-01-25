@@ -138,6 +138,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
             if (status != GSL_CONTINUE) break;
             
         }
+//        printf ("status = %s\n", gsl_strerror (status));
         if (status == GSL_SUCCESS) 
         {
             double t0, t1; 
