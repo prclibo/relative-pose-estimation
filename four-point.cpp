@@ -92,7 +92,7 @@ int four_point_fdf(const gsl_vector * t, void * ab, gsl_vector * f, gsl_matrix *
 
 void solve_roots(const vector<double> & a, const vector<double> & b, vector<double> & rx, vector<double> & ry, vector<double> & rz)
 {
-    int n_samples = 10; 
+    int n_samples = 30; 
     int n_iters = 200; 
     double residual_threshold = 1e-12; 
     double same_root_threshold = 1e-3; 
