@@ -92,7 +92,7 @@ int four_point_fdf(const gsl_vector * t, void * ab, gsl_vector * f, gsl_matrix *
 
 void solve_roots(const vector<double> & a, const vector<double> & b, vector<double> & rx, vector<double> & ry, vector<double> & rz)
 {
-    int n_samples = 30; 
+    int n_samples = 10; 
     int n_iters = 200; 
     double residual_threshold = 1e-12; 
     double same_root_threshold = 1e-3; 
@@ -274,7 +274,7 @@ protected:
 }; 
 
 CvFourPointEstimator::CvFourPointEstimator( double _angle )
-: CvModelEstimator2( 4, cvSize(4, 3),  20 ), 
+: CvModelEstimator2( 4, cvSize(6, 1),  50 ), 
   angle( _angle ) 
 {
 }
@@ -282,7 +282,7 @@ CvFourPointEstimator::CvFourPointEstimator( double _angle )
 
 // Notice to keep compatibility with opencv ransac, q1 and q2 have
 // to be of 1 row x n col x 2 channel. 
-int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _rmat_tvec )
+int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _rvec_tvec )
 {
 	// Notice to keep notion consistence with our reference Matlab code, 
 	// in this function Q1 denotes right points while Q2 left. 
@@ -293,14 +293,12 @@ int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _r
 
     std::vector<Mat> rvecs, tvecs; 
     four_point(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
-    Mat rmat_tvec(_rmat_tvec); 
+    double * rt = _rvec_tvec->data.db; 
 
     for (int i = 0; i < rvecs.size(); i++)
     {
-        Mat rmat; 
-        Rodrigues(rvecs.at(i), rmat); 
-        rmat_tvec(Range(i * 3, i * 3 + 3), Range(0, 3)) = rmat * 1.0; 
-        rmat_tvec(Range(i * 3, i * 3 + 3), Range(3, 4)) = tvecs.at(i) * 1.0; 
+        memcpy(rt + i * 6, rvecs.at(i).ptr<double>(), 3 * sizeof(double)); 
+        memcpy(rt + i * 6 + 3, tvecs.at(i).ptr<double>(), 3 * sizeof(double)); 
     }
  
     return rvecs.size(); 
@@ -322,9 +320,12 @@ void CvFourPointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
     X1.convertTo(X1, CV_64F); 
     X2.convertTo(X2, CV_64F); 
 
-    Mat P(model); 
-    Mat tvec = P.colRange(3, 4) * 1.0; 
-    Mat rmat = P.colRange(0, 3) * 1.0; 
+    Mat rvec_tvec(model); 
+    Mat rvec = rvec_tvec.colRange(0, 3) * 1.0; 
+    Mat tvec = rvec_tvec.colRange(3, 6) * 1.0; 
+
+    Mat rmat; 
+    Rodrigues(rvec, rmat); 
 
     double * t = tvec.ptr<double>(); 
     Mat tskew = (Mat_<double>(3, 3) << 0, -t[2], t[1], t[2], 0, -t[0], -t[1], t[0], 0); 
@@ -348,3 +349,87 @@ void CvFourPointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
 }    
 
 
+void findPose(cv::InputArray _points1, cv::InputArray _points2, 
+              double angle, double focal, cv::Point2d pp, 
+              cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs, 
+              int method, double prob, double threshold, OutputArray _mask) 
+{
+	Mat points1, points2; 
+	_points1.getMat().copyTo(points1); 
+	_points2.getMat().copyTo(points2); 
+
+	int npoints = points1.checkVector(2);
+    CV_Assert( npoints >= 4 && points2.checkVector(2) == npoints &&
+				              points1.type() == points2.type());
+
+	if (points1.channels() > 1)
+	{
+		points1 = points1.reshape(1, npoints); 
+		points2 = points2.reshape(1, npoints); 
+	}
+	points1.convertTo(points1, CV_64F); 
+	points2.convertTo(points2, CV_64F); 
+
+	points1.col(0) = (points1.col(0) - pp.x) / focal; 
+	points2.col(0) = (points2.col(0) - pp.x) / focal; 
+	points1.col(1) = (points1.col(1) - pp.y) / focal; 
+	points2.col(1) = (points2.col(1) - pp.y) / focal; 
+	
+	// Reshape data to fit opencv ransac function
+	points1 = points1.reshape(2, 1); 
+	points2 = points2.reshape(2, 1); 
+
+	Mat rvec_tvec(1, 6, CV_64F); 
+    CvFourPointEstimator estimator(angle); 
+
+	CvMat p1 = points1; 
+	CvMat p2 = points2; 
+	CvMat _rvec_tvec = rvec_tvec; 
+	CvMat* tempMask = cvCreateMat(1, npoints, CV_8U); 
+	
+	assert(npoints >= 4); 
+	threshold /= focal; 
+    int count = 1; 
+    if (npoints == 4)
+    {
+        four_point(_points1, _points2, angle, focal, pp, _rvecs, _tvecs); 
+        Mat(tempMask).setTo(true); 
+    }
+    else 
+    {
+        if (method == CV_RANSAC)
+    	{
+    		estimator.runRANSAC(&p1, &p2, &_rvec_tvec, tempMask, threshold, prob); 
+    	}
+    	else
+    	{
+    		estimator.runLMeDS(&p1, &p2, &_rvec_tvec, tempMask, prob); 
+    	}
+    
+        if (_mask.needed())
+        {
+        	_mask.create(1, npoints, CV_8U, -1, true); 
+        	Mat mask = _mask.getMat(); 
+        	Mat(tempMask).copyTo(mask); 
+        }
+    
+
+        _rvecs.create(2, 1, CV_64FC3); 
+        _tvecs.create(2, 1, CV_64FC3); 
+        
+        _rvecs.create(3, 1, CV_64F, 0, true); 
+        _tvecs.create(3, 1, CV_64F, 0, true); 
+
+        _rvecs.create(3, 1, CV_64F, 1, true); 
+        _tvecs.create(3, 1, CV_64F, 1, true); 
+        
+        Mat(rvec_tvec.colRange(0, 3).t()).copyTo(_rvecs.getMat(0)); 
+        Mat(rvec_tvec.colRange(0, 3).t()).copyTo(_rvecs.getMat(1)); 
+
+        Mat(rvec_tvec.colRange(3, 6).t()).copyTo(_tvecs.getMat(0));  
+        Mat(-rvec_tvec.colRange(3, 6).t()).copyTo(_tvecs.getMat(1));  
+
+    }
+
+
+}
