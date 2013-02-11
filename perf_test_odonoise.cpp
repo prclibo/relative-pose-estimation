@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "four-point.hpp"
 #include "five-point/five-point.hpp"
 
@@ -7,45 +8,48 @@ int main()
 {
     double angle_bound = CV_PI / 4; 
 
-    double nearest_dist = 1; 
-    double baseline_dev = 0.01; 
-    double baseline = 1; 
+    double nearest_dist = 10; 
+    double baseline_dev = 0.001; 
+    double baseline = -1; 
     double depth = 5; 
 
     double focal = 300; 
     double bound_2d = 175; 
 
     RNG rng; 
-    vector<vector<double> > t_angle_4pt, t_angle_5pt;     
-    
 
-    std::cout << "h = figure, " << std::endl; 
-    for (double odo_sigma = 0; odo_sigma < M_PI / 180.0 * 1.5; odo_sigma += M_PI / 180.0 * 3)
+    std::cout << "h = figure, hold on" << std::endl; 
+
+    for (double odo_sigma = 0; odo_sigma < M_PI / 180 * 3; odo_sigma += M_PI / 180 * 0.5)
     {
-        std::cout << "t_err_4pt = []; " << std::endl;  
-        std::cout << "t_err_5pt = []; " << std::endl;  
-        std::cout << "px_sigma = []; " << std::endl;  
-
-        for (double px_sigma = 0; px_sigma <= 1.0; px_sigma += 0.1)
+    
+        vector<vector<double> > t_angle_4pt, t_angle_5pt;     
+        
+        std::cout << "t_err_4pt = 0; " << std::endl;  
+        std::cout << "t_err_5pt = 0; " << std::endl;  
+        std::cout << "px_sigma = 0; " << std::endl;  
+    
+        for (double stdd = 0.1; stdd <= 1.0; stdd += 0.1)
         {
+            double px_sigma = stdd; 
+    
             std::cout << "px_sigma(end + 1) = " << px_sigma << "; " << std::endl; 
             t_angle_4pt.push_back(vector<double>());         
             t_angle_5pt.push_back(vector<double>());         
-            for (int i = 0; i < 1000; i++)
+            for (int i = 0; i < 500; i++)
             {    
                 Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F), cvec(3, 1, CV_64F); 
                 rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
-                rng.fill(cvec, RNG::UNIFORM, -baseline_dev, baseline_dev); 
+                rng.fill(cvec, RNG::UNIFORM, -baseline, baseline); 
                 
-                cvec.at<double>(2) = baseline;  
-    
+                normalize(cvec, cvec); 
                 rvec *= fmod(norm(rvec), CV_PI) / norm(rvec); 
     
                 Mat rmat; 
                 Rodrigues(rvec, rmat); 
     
                 tvec = -rmat * cvec; 
-        
+    
                 Mat K = (Mat_<double>(3, 3) << focal, 0, 0, 0, focal, 0, 0, 0, 1); 
                 
                 Mat Xs(5, 3, CV_64F); 
@@ -79,15 +83,15 @@ int main()
                 x2s = x2s.colRange(0, 2) * 1.0; 
     
         
-                Mat noise(x1s.size(), CV_64F); 
-                rng.fill(noise, RNG::NORMAL, 0, px_sigma); 
-                Mat x1s_noise = x1s + noise; 
-                rng.fill(noise, RNG::NORMAL, 0, px_sigma); 
-                Mat x2s_noise = x2s + noise; 
-            
-                std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+                Mat noise1(x1s.size(), CV_64F), noise2(x2s.size(), CV_64F); 
+                rng.fill(noise1, RNG::NORMAL, 0, px_sigma); 
+                Mat x1s_noise = x1s + noise1; 
+                rng.fill(noise2, RNG::NORMAL, 0, px_sigma); 
+                Mat x2s_noise = x2s + noise2; 
+
                 double angle = norm(rvec) + rng.gaussian(odo_sigma); 
     
+                std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
                 four_point(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
                 four_point(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), angle, focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
         
@@ -95,7 +99,6 @@ int main()
                 
                 if (rvecs_4pt_noise.empty()) 
                 {
-    //                t_angle_4pt.back().push_back(CV_PI/2); 
                     continue; 
                 }
                 
@@ -130,20 +133,39 @@ int main()
                     Mat r1, r2; 
                     Rodrigues(R1, r1); 
                     Rodrigues(R2, r2); 
-    //                std::cout << r1 << r2 << t << std::endl; 
-                    if (norm(r1, rvec) < min_dist)
+        
+                    double dist1 = norm(r1, rvec) + norm(t, tvec); 
+                    double dist2 = norm(r1, rvec) + norm(-t, tvec); 
+                    double dist3 = norm(r2, rvec) + norm(t, tvec); 
+                    double dist4 = norm(r2, rvec) + norm(-t, tvec); 
+    
+                    if (dist1 < min_dist)
                     {
                         rvec_5pt_noise = r1 * 1.0; 
-                        tvec_5pt_noise = norm(t, tvec) < norm(-t, tvec) ? t * 1.0 : -t * 1.0; 
-                        min_dist = norm(r1, rvec); 
+                        tvec_5pt_noise = t * 1.0; 
+                        min_dist = dist1; 
                     }
-                    if (norm(r2, rvec) < min_dist)
+                    if (dist2 < min_dist)
+                    {
+                        rvec_5pt_noise = r1 * 1.0; 
+                        tvec_5pt_noise = -t * 1.0; 
+                        min_dist = dist2; 
+                    }
+    
+                    if (dist3 < min_dist)
                     {
                         rvec_5pt_noise = r2 * 1.0; 
-                        tvec_5pt_noise = norm(t, tvec) < norm(-t, tvec) ? t * 1.0 : -t * 1.0; 
-                        min_dist = norm(r2, rvec); 
+                        tvec_5pt_noise = t * 1.0; 
+                        min_dist = dist3;  
+                    }
+                    if (dist4 < min_dist)
+                    {
+                        rvec_5pt_noise = r2 * 1.0; 
+                        tvec_5pt_noise = -t * 1.0; 
+                        min_dist = dist4; 
                     }
                 }
+    
                 if (j == 0)
                 {
                     continue; 
@@ -153,23 +175,30 @@ int main()
                     temp = tvec_5pt_noise.dot(tvec); 
                     t_angle_5pt.back().push_back(acos(temp > 1 ? 1 : temp)); 
     
+    
                 }
     
     
             }
             Scalar mean, dev; 
-            meanStdDev(t_angle_4pt.back(), mean, dev); 
-            std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
-            meanStdDev(t_angle_5pt.back(), mean, dev); 
-            std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
+    //        meanStdDev(t_angle_4pt.back(), mean, dev); 
+    //        std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
+    //        meanStdDev(t_angle_5pt.back(), mean, dev); 
+    //        std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
+            std::nth_element(t_angle_4pt.back().begin(), t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4, t_angle_4pt.back().end()); 
+            std::cout << "t_err_4pt(end + 1) = " << *(t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4) << "; " << std::endl;  
+            std::nth_element(t_angle_5pt.back().begin(), t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4, t_angle_5pt.back().end()); 
+            std::cout << "t_err_5pt(end + 1) = " << *(t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4) << "; " << std::endl;  
     
         }
+    
+        std::cout << "t_err_4pt = t_err_4pt * 180 / pi; " << std::endl; 
+        std::cout << "h_4pt = plot(0:0.1:1, t_err_4pt, '-o'), hold on" << std::endl; 
     }
-
-    std::cout << "t_err_4pt = t_err_4pt * 180 / pi; " << std::endl; 
     std::cout << "t_err_5pt = t_err_5pt * 180 / pi; " << std::endl; 
-    std::cout << "plot(0:0.1:1, t_err_4pt, '-o'), hold on" << std::endl; 
-    std::cout << "plot(0:0.1:1, t_err_5pt, '-x'), hold on" << std::endl; 
-    std::cout << "legend('4-pt', '5-pt', 'Location', 'Northwest')" << std::endl; 
-    std::cout << "set(h, 'Position', [0, 0, 300, 200])" << std::endl; ; 
+    std::cout << "h_5pt = plot(0:0.1:1, t_err_5pt, '-x', 'markersize', 12, 'linewidth', 2), hold on" << std::endl; 
+    std::cout << "legend([h_4pt, h_5pt], '4-pt w/ varying odo noise', '5-pt', 'Location', 'Northwest')" << std::endl; 
+    std::cout << "xlabel('Noise (px)')" << std::endl; 
+    std::cout << "ylabel('Translation error (deg)')" << std::endl; 
+
 }

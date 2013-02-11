@@ -196,4 +196,6 @@ int main()
     std::cout << "plot(0:0.1:1, t_err_5pt, '-x'), hold on" << std::endl; 
     std::cout << "legend('4-pt', '5-pt', 'Location', 'Northwest')" << std::endl; 
     std::cout << "set(h, 'Position', [0, 0, 300, 200])" << std::endl; ; 
+    std::cout << "xlabel('Noise (px)')" << std::endl; 
+    std::cout << "ylabel('Translation error (deg)')" << std::endl; 
 }
