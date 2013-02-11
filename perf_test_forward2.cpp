@@ -1,4 +1,3 @@
-#include <algorithm>
 #include "four-point.hpp"
 #include "five-point/five-point.hpp"
 
@@ -8,13 +7,15 @@ int main()
 {
     double angle_bound = CV_PI / 1000; 
 
-    double nearest_dist = 10; 
+    double nearest_dist = 5; 
     double baseline_dev = 0.001; 
     double baseline = -1; 
-    double depth = 5; 
+    double depth = 20; 
 
     double focal = 300; 
     double bound_2d = 175; 
+
+    int N = 50; 
 
     RNG rng; 
     vector<vector<double> > t_angle_4pt, t_angle_5pt;     
@@ -30,7 +31,7 @@ int main()
         std::cout << "sigma(end + 1) = " << sigma << "; " << std::endl; 
         t_angle_4pt.push_back(vector<double>());         
         t_angle_5pt.push_back(vector<double>());         
-        for (int i = 0; i < 1000; i++)
+        for (int i = 0; i < 100; i++)
         {    
             Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F), cvec(3, 1, CV_64F); 
             rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
@@ -47,12 +48,12 @@ int main()
 
             Mat K = (Mat_<double>(3, 3) << focal, 0, 0, 0, focal, 0, 0, 0, 1); 
             
-            Mat Xs(5, 3, CV_64F); 
+            Mat Xs(N, 3, CV_64F); 
             rng.fill(Xs, RNG::UNIFORM, -bound_2d, bound_2d); 
             Xs.col(2) = focal; 
 
 
-            Mat ds(5, 1, CV_64F); 
+            Mat ds(Xs.rows, 1, CV_64F); 
             rng.fill(ds, RNG::UNIFORM, nearest_dist, nearest_dist + depth); 
             for (int j = 0; j < Xs.rows; j++)
                 Xs.row(j) *= ds.at<double>(j) / Xs.at<double>(j, 2); 
@@ -91,10 +92,11 @@ int main()
 //            exit(0); 
         
             std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
-            four_point(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
-            four_point(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
+            findPose(x1s, x2s, norm(rvec), focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
     
             tvec /= norm(tvec); 
+
+//            exit(0); 
             
             if (rvecs_4pt_noise.empty()) 
             {
@@ -102,12 +104,6 @@ int main()
                 continue; 
             }
             
-            int k; 
-            for (k = 0; k < rvecs_4pt.size(); k++)
-            {
-                if (norm(rvecs_4pt[k], rvec) + norm(tvecs_4pt[k], tvec) < 1e-5) break; 
-            }
-            if (k >= rvecs_4pt.size()) continue; 
 
             double min_dist = 1e100; 
             int index; 
@@ -185,14 +181,11 @@ int main()
 
         }
         Scalar mean, dev; 
-//        meanStdDev(t_angle_4pt.back(), mean, dev); 
-//        std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
-//        meanStdDev(t_angle_5pt.back(), mean, dev); 
-//        std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
-        std::nth_element(t_angle_4pt.back().begin(), t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4, t_angle_4pt.back().end()); 
-        std::cout << "t_err_4pt(end + 1) = " << *(t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4) << "; " << std::endl;  
-        std::nth_element(t_angle_5pt.back().begin(), t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4, t_angle_5pt.back().end()); 
-        std::cout << "t_err_5pt(end + 1) = " << *(t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4) << "; " << std::endl;  
+        std::cout << t_angle_4pt.back().size() << std::endl; 
+        meanStdDev(t_angle_4pt.back(), mean, dev); 
+        std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
+        meanStdDev(t_angle_5pt.back(), mean, dev); 
+        std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
 
     }
 

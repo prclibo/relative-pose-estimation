@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "four-point.hpp"
 #include "five-point/five-point.hpp"
 
@@ -5,11 +6,11 @@ using namespace cv;
 
 int main()
 {
-    double angle_bound = CV_PI / 12; 
+    double angle_bound = CV_PI / 1000; 
 
-    double nearest_dist = 1; 
-    double baseline_dev = 0.01; 
-    double baseline = 0.1; 
+    double nearest_dist = 10; 
+    double baseline_dev = 0.001; 
+    double baseline = -1; 
     double depth = 5; 
 
     double focal = 300; 
@@ -22,12 +23,14 @@ int main()
     std::cout << "t_err_5pt = 0; " << std::endl;  
     std::cout << "sigma = 0; " << std::endl;  
 
-    for (double sigma = 0.1; sigma <= 1.0; sigma += 0.1)
+    for (double stdd = 0.1; stdd <= 1.0; stdd += 0.1)
     {
+        double sigma = stdd; 
+
         std::cout << "sigma(end + 1) = " << sigma << "; " << std::endl; 
         t_angle_4pt.push_back(vector<double>());         
         t_angle_5pt.push_back(vector<double>());         
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 1000; i++)
         {    
             Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F), cvec(3, 1, CV_64F); 
             rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
@@ -41,7 +44,7 @@ int main()
             Rodrigues(rvec, rmat); 
 
             tvec = -rmat * cvec; 
-    
+
             Mat K = (Mat_<double>(3, 3) << focal, 0, 0, 0, focal, 0, 0, 0, 1); 
             
             Mat Xs(5, 3, CV_64F); 
@@ -75,11 +78,17 @@ int main()
             x2s = x2s.colRange(0, 2) * 1.0; 
 
     
-            Mat noise(x1s.size(), CV_64F); 
-            rng.fill(noise, RNG::NORMAL, 0, sigma); 
-            Mat x1s_noise = x1s + noise; 
-            rng.fill(noise, RNG::NORMAL, 0, sigma); 
-            Mat x2s_noise = x2s + noise; 
+            Mat noise1(x1s.size(), CV_64F), noise2(x2s.size(), CV_64F); 
+            rng.fill(noise1, RNG::NORMAL, 0, sigma); 
+            Mat x1s_noise = x1s + noise1; 
+            rng.fill(noise2, RNG::NORMAL, 0, sigma); 
+            Mat x2s_noise = x2s + noise2; 
+
+/*            std::cout << Xs << std::endl; 
+            std::cout << x1s_noise << std::endl; 
+            std::cout << x2s_noise << std::endl;                
+            std::cout << rvec /norm(rvec) << std::endl; */
+//            exit(0); 
         
             std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
             four_point(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
@@ -124,20 +133,39 @@ int main()
                 Mat r1, r2; 
                 Rodrigues(R1, r1); 
                 Rodrigues(R2, r2); 
-//                std::cout << r1 << r2 << t << std::endl; 
-                if (norm(r1, rvec) < min_dist)
+    
+                double dist1 = norm(r1, rvec) + norm(t, tvec); 
+                double dist2 = norm(r1, rvec) + norm(-t, tvec); 
+                double dist3 = norm(r2, rvec) + norm(t, tvec); 
+                double dist4 = norm(r2, rvec) + norm(-t, tvec); 
+
+                if (dist1 < min_dist)
                 {
                     rvec_5pt_noise = r1 * 1.0; 
-                    tvec_5pt_noise = norm(t, tvec) < norm(-t, tvec) ? t * 1.0 : -t * 1.0; 
-                    min_dist = norm(r1, rvec); 
+                    tvec_5pt_noise = t * 1.0; 
+                    min_dist = dist1; 
                 }
-                if (norm(r2, rvec) < min_dist)
+                if (dist2 < min_dist)
+                {
+                    rvec_5pt_noise = r1 * 1.0; 
+                    tvec_5pt_noise = -t * 1.0; 
+                    min_dist = dist2; 
+                }
+
+                if (dist3 < min_dist)
                 {
                     rvec_5pt_noise = r2 * 1.0; 
-                    tvec_5pt_noise = norm(t, tvec) < norm(-t, tvec) ? t * 1.0 : -t * 1.0; 
-                    min_dist = norm(r2, rvec); 
+                    tvec_5pt_noise = t * 1.0; 
+                    min_dist = dist3;  
+                }
+                if (dist4 < min_dist)
+                {
+                    rvec_5pt_noise = r2 * 1.0; 
+                    tvec_5pt_noise = -t * 1.0; 
+                    min_dist = dist4; 
                 }
             }
+
             if (j == 0)
             {
                 continue; 
@@ -147,15 +175,24 @@ int main()
                 temp = tvec_5pt_noise.dot(tvec); 
                 t_angle_5pt.back().push_back(acos(temp > 1 ? 1 : temp)); 
 
+
+//                std::cout << tvec << std::endl; 
+//                std::cout << tvec_5pt_noise << std::endl; 
+//                std::cout << t_angle_5pt.back().back() << std::endl; 
+
             }
 
 
         }
         Scalar mean, dev; 
-        meanStdDev(t_angle_4pt.back(), mean, dev); 
-        std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
-        meanStdDev(t_angle_5pt.back(), mean, dev); 
-        std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
+//        meanStdDev(t_angle_4pt.back(), mean, dev); 
+//        std::cout << "t_err_4pt(end + 1) = " << mean[0] << "; " << std::endl;  
+//        meanStdDev(t_angle_5pt.back(), mean, dev); 
+//        std::cout << "t_err_5pt(end + 1) = " << mean[0] << "; " << std::endl;  
+        std::nth_element(t_angle_4pt.back().begin(), t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4, t_angle_4pt.back().end()); 
+        std::cout << "t_err_4pt(end + 1) = " << *(t_angle_4pt.back().begin() + t_angle_4pt.back().size() / 4) << "; " << std::endl;  
+        std::nth_element(t_angle_5pt.back().begin(), t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4, t_angle_5pt.back().end()); 
+        std::cout << "t_err_5pt(end + 1) = " << *(t_angle_5pt.back().begin() + t_angle_5pt.back().size() / 4) << "; " << std::endl;  
 
     }
 

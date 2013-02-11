@@ -6,6 +6,11 @@
 
 using namespace cv; 
 
+void truncate(double & t)
+{
+    if (t > 1.0) t = fmod(t, 1.0); 
+    if (t < 0.0) t = fmod(t, 1.0) + 1.0; 
+}
 
 int four_point_f(const gsl_vector * t, void * ab, gsl_vector * f)
 {
@@ -15,10 +20,8 @@ int four_point_f(const gsl_vector * t, void * ab, gsl_vector * f)
     double t0 = gsl_vector_get(t, 0); 
     double t1 = gsl_vector_get(t, 1); 
 
-    if (t0 < 0.0) t0 = 0.0; 
-    if (t0 > 1.0) t0 = 1.0; 
-    if (t1 < 0.0) t0 = 0.0; 
-    if (t1 > 1.0) t1 = 1.0; 
+    truncate(t0); 
+    truncate(t1); 
 
     double theta = acos(2.0 * t0 - 1.0); 
     double psi = 2.0 * CV_PI * t1; 
@@ -44,10 +47,8 @@ int four_point_df(const gsl_vector * t, void * ab, gsl_matrix * J)
     double t0 = gsl_vector_get(t, 0); 
     double t1 = gsl_vector_get(t, 1); 
 
-    if (t0 < 0.0) t0 = 0.0; 
-    if (t0 > 1.0) t0 = 1.0; 
-    if (t1 < 0.0) t0 = 0.0; 
-    if (t1 > 1.0) t1 = 1.0; 
+    truncate(t0); 
+    truncate(t1); 
 
     double theta = acos(2.0 * t0 - 1.0); 
     double psi = 2.0 * CV_PI * t1; 
@@ -94,8 +95,9 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 {
     int n_samples = 10; 
     int n_iters = 200; 
-    double residual_threshold = 1e-12; 
-    double same_root_threshold = 1e-3; 
+    double residual_threshold = 1e-4; 
+    double delta_threshold = 1e-14; 
+    double same_root_threshold = 1e-2; 
 
     // Sample initial solutions
     vector<double> t0_initial, t1_initial; 
@@ -120,7 +122,9 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
     solver_type = gsl_multiroot_fdfsolver_hybridj; 
     solver = gsl_multiroot_fdfsolver_alloc(solver_type, 2); 
 
-    vector<double> t0_final, t1_final; 
+    rx.clear(); 
+    ry.clear(); 
+    rz.clear(); 
     for (int i = 0; i < t0_initial.size(); i++)
     {
         gsl_vector *t = gsl_vector_alloc(2); 
@@ -129,59 +133,62 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
         
         gsl_multiroot_fdfsolver_set(solver, &f, t); 
         
-        int iter = 0, status; 
+        int iter = 0, iterate_status, residual_status, delta_status; 
         while (iter++ < n_iters)
         {
-            status = gsl_multiroot_fdfsolver_iterate(solver); 
-            if (status) break; 
-            status = gsl_multiroot_test_residual(solver->f, residual_threshold); 
-            if (status != GSL_CONTINUE) break;
+            iterate_status = gsl_multiroot_fdfsolver_iterate(solver); 
+            if (iterate_status) break; 
+            residual_status = gsl_multiroot_test_residual(solver->f, residual_threshold); 
+            delta_status = gsl_multiroot_test_delta(solver->dx, solver->x, delta_threshold, 0); 
+            if (residual_status == GSL_SUCCESS && delta_status == GSL_SUCCESS) break;
             
         }
 //        printf ("status = %s\n", gsl_strerror (status));
 //        printf("f = %e %e\n", gsl_vector_get(solver->f, 0), gsl_vector_get(solver->f, 1)); 
-        if (status == GSL_SUCCESS) 
+//        std::cout << gsl_strerror(iterate_status) << "\n " << gsl_strerror(residual_status) << "\n " << gsl_strerror(delta_status) << std::endl; 
+        if (//iterate_status == GSL_SUCCESS && 
+            residual_status == GSL_SUCCESS /*&&  
+            delta_status == GSL_SUCCESS */)
         {
             double t0, t1; 
             int j, k; 
 
-            t0 = gsl_vector_get(solver->x, 0); 
-            t1 = gsl_vector_get(solver->x, 1); 
+            t0 = gsl_vector_get(solver->x, 0);  
+            t1 = gsl_vector_get(solver->x, 1);  
+            truncate(t0); 
+            truncate(t1); 
 
-            for (j = 0; j < t0_final.size(); j++) 
+            double theta = acos(2.0 * t0 - 1.0); 
+            double psi = 2.0 * CV_PI * t1; 
+            double rx_cur = sin(theta) * cos(psi); 
+            double ry_cur = sin(theta) * sin(psi); 
+            double rz_cur = cos(theta); 
+
+            for (j = 0; j < rx.size(); j++)
             {
-                if ((t0 - t0_final[j]) * (t0 - t0_final[j]) + 
-                    (t1 - t1_final[j]) * (t1 - t1_final[j]) < 
+                if ((rx[j] - rx_cur) * (rx[j] - rx_cur) + 
+                    (ry[j] - ry_cur) * (ry[j] - ry_cur) + 
+                    (rz[j] - rz_cur) * (rz[j] - rz_cur) < 
                     same_root_threshold * same_root_threshold)
                     break; 
             }
 
-            if (j >= t0_final.size()) 
+            if (j >= rx.size()) 
             {
-                t0_final.push_back(t0); 
-                t1_final.push_back(t1); 
+                rx.push_back(rx_cur); 
+                ry.push_back(ry_cur); 
+                rz.push_back(rz_cur); 
+//        std::cout << theta << " " << psi << " " << rx.back() << " " << ry.back() << " " << rz.back() << std::endl ;
             }
         } 
+        
+
 
         gsl_vector_free(t); 
     }
 
     gsl_multiroot_fdfsolver_free(solver); 
 
-    rx.clear(); 
-    ry.clear(); 
-    rz.clear(); 
-    for (int i = 0; i < t0_final.size(); i++)    
-    {
-        double t0 = t0_final[i]; 
-        double t1 = t1_final[i]; 
-
-        double theta = acos(2.0 * t0 - 1.0); 
-        double psi = 2.0 * CV_PI * t1; 
-        rx.push_back(sin(theta) * cos(psi)); 
-        ry.push_back(sin(theta) * sin(psi)); 
-        rz.push_back(cos(theta)); 
-    }
 
 }
 
@@ -275,7 +282,7 @@ protected:
 }; 
 
 CvFourPointEstimator::CvFourPointEstimator( double _angle )
-: CvModelEstimator2( 4, cvSize(6, 1),  50 ), 
+: CvModelEstimator2( 4, cvSize(6, 1),  100 ), 
   angle( _angle ) 
 {
 }
