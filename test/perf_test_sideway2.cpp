@@ -37,7 +37,7 @@ int main()
             rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
             rng.fill(cvec, RNG::UNIFORM, -baseline_dev, baseline_dev); 
             
-            cvec.at<double>(2) = baseline;  
+            cvec.at<double>(0) = baseline;  
 
             rvec *= fmod(norm(rvec), CV_PI) / norm(rvec); 
 
@@ -92,7 +92,7 @@ int main()
 //            exit(0); 
         
             std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
-            findPose(x1s, x2s, norm(rvec), focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
+            findPose(x1s_noise, x2s_noise, norm(rvec), focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
     
             tvec /= norm(tvec); 
 

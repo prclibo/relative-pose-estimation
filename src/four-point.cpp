@@ -282,7 +282,7 @@ protected:
 }; 
 
 CvFourPointEstimator::CvFourPointEstimator( double _angle )
-: CvModelEstimator2( 4, cvSize(6, 1),  100 ), 
+: CvModelEstimator2( 4, cvSize(6, 1),  200 ), 
   angle( _angle ) 
 {
 }
