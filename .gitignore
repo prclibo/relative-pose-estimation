@@ -17,3 +17,8 @@
 *.bak
 *.sav
 *~
+
+*.log
+*.aux
+*.gz
+

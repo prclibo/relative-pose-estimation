@@ -1,0 +1,52 @@
+\documentclass{article}
+
+\title{Four-point algorithm for relative camera pose estimation using uncalibrated odometry reading}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We propose an algorithm to estimate relative camera pose on a robot platform mounted with camera and odometer. This algorithm exploits a fact that relative rotation angle of odometer is invariant in camera coordinate system. Therefore, extrinsic calibration between camera and odometer is not required. The relative rotation angle from odometry reading and four feature point correspondences from camera are used for epipolar geometry estimation. We show that the proposed algorithm improves relative pose estimation compared with the well known 5-point algorithm. 
+\end{abstract}
+
+
+\section{Introduction}
+Vehicle platform mounted with camera and odometer has been widely used in research fields of computer vision, robotics and automatic control. For years research has be focused on using these economic sensors to locate the vehicle as well as reconstruct the environment. This research is also referred as Visual SLAM in Robotics. 
+
+The key step of Visual SLAM is to estimate relative camera pose between frame pair. One commonly used method is to use a subset of image feature correspondences to estimate the Fundamental Matrix or Essential Matrix between two frames. Relative rotation and translation can then be extracted from the estimation result. A series of ``n-point'' (n-correspondences) algorithms are proposed for this aim. If the camera has with unknown intrinsics, the Fundamental Matrix can be estimated by 8-point [x] or 7-point [x] algorithm. If the camera has calibrated intrinsics, then 6-point [x] or 5-point [x] can be used to the Essential Matrix. Based on these algorithms, robust estimation methods like RANSAC or LMedS are used to generate best estimation from a set of points with both inliers and outliers. The result of ``n-point'' algorithm is significantly affected by the feature correspondences detected from images. It is well admitted that the algorithm using fewer points has lower estimation error. For calibrated camera, 5-point is the minimal case to solve the 5 DoF relative pose. In [x, x], 5-point algorithm shows the best estimation performance compared with 6, 7, 8-point algorithms. For Visual SLAM or Structure from Motion problem, 5-point algorithm is also the most commonly used algorithm. 
+
+However, stable estimation is still not always guaranteed for 5-point algorithm. On a vehicle with camera mounted in its front, relative pose estimation is especially a difficult case for 5-point algorithm. The difficulties include the following: 1) 5-point algorithm less stable in forward motion compared with sideway motion. 2) Features seen by a front camera are mainly far away from the vehicle, which also make the estimation unreliable. Discussion in [x] also shows that translation is more sensitive than rotation when estimation is affected. 
+
+In this paper, we propose a method to improve the relative pose estimation. We will show that rotation angle is invariant pose measure i.e. camera and odometer always have the same rotation angle. Therefore, this angle from odometer reading can be used for camera relative pose estimation. No extrinsic calibration between camera and odometer is required. With this information provided, the algorithm only requires 4 point pairs. Since odometer reading can be always very stable and accurate, the proposed can largely improve relative estimation compared with 5-point algorithm. 
+
+Note that if the extrinsic calibration between camera and odometer is available, camera relative pose can be directly obtained from odometer pose $H_o$ as $H^{-1} H_o H$, where $H$ is the transform between camera and odometer. However, in practice estimating $H$ is not easy. This problem is well-known as Hand-eye (or Head-eye) calibration [x]. Moreover, the success of these hand-eye calibration algorithms also requires accurate visual odometry estimation. This visual odometry estimation also requires 5-point or the proposed 4-point algorithm. 
+
+The rest of the paper is organised as follows. Sec.\ref{Preliminaries} establishes notations and formulas used in the proposed methods. Sec.\ref{} presents the form of 4-point relative pose problem and the algorithm to solve it. The performance of the algorithm is studied in Sec.\ref{}, where it is compared with the well known 5-point algorithm on both simulated cases and real dataset. 
+
+\section{Preliminaries}
+\label{Preliminaries}
+
+Image points from the first and second frame are denoted by homogeneous vectors $p_1 = (x_1, y_1, 1)^\top$ and $p_2 = (x_2, y_2, 1)^\top$, resp. Intrinsic matrix of the camera is denoted as $K$. Since the proposed algorithm requires $K$ to be known, we hereby assume that $p_1$ and $p_2$ are always premultiplied by $K^{-1}$. 
+
+Denote $R$ and $t$ as the relative rotation and translation between the first and second frame. The Essential Matrix corresponding to $R$ and $t$ can be denoted as 
+\begin{equation}
+E = [t]_\times R
+\end{equation}
+where $[t]_\times$ denotes the skew symmetric matrix
+\begin{equation}
+[t]_\times \equiv \left(
+	\begin{array}{clr}
+		0 & t_3 & -t_2 \\
+		-t_3 & 0 & t_1 \\
+		t_2 & -t_1 & 0
+	\end{array}
+\right)	
+\end{equation}
+
+For correspondence $p_1$, $p_2$, it is well know that
+\begin{equation}
+{p_2}^\top E p_1 = 0
+\end{equation}
+
+\end{document}
