@@ -22,7 +22,7 @@ In this paper, we propose a method to improve the relative pose estimation. We w
 
 Note that if the extrinsic calibration between camera and odometer is available, camera relative pose can be directly obtained from odometer pose $H_o$ as $H^{-1} H_o H$, where $H$ is the transform between camera and odometer. However, in practice estimating $H$ is not easy. This problem is well-known as Hand-eye (or Head-eye) calibration [x]. Moreover, the success of these hand-eye calibration algorithms also requires accurate visual odometry estimation. This visual odometry estimation also requires 5-point or the proposed 4-point algorithm. 
 
-The rest of the paper is organised as follows. Sec.\ref{Preliminaries} establishes notations and formulas used in the proposed methods. Sec.\ref{} presents the form of 4-point relative pose problem and the algorithm to solve it. The performance of the algorithm is studied in Sec.\ref{}, where it is compared with the well known 5-point algorithm on both simulated cases and real dataset. 
+The rest of the paper is organised as follows. Sec.\ref{Preliminaries} establishes notations and formulas used in the proposed methods. Sec.\ref{Algorithm} presents the form of 4-point relative pose problem and the algorithm to solve it. The performance of the algorithm is studied in Sec.\ref{}, where it is compared with the well known 5-point algorithm on both simulated cases and real dataset. 
 
 \section{Preliminaries}
 \label{Preliminaries}
@@ -31,22 +31,108 @@ Image points from the first and second frame are denoted by homogeneous vectors 
 
 Denote $R$ and $t$ as the relative rotation and translation between the first and second frame. The Essential Matrix corresponding to $R$ and $t$ can be denoted as 
 \begin{equation}
+\label{EssentialDecomposition}
 E = [t]_\times R
 \end{equation}
 where $[t]_\times$ denotes the skew symmetric matrix
 \begin{equation}
 [t]_\times \equiv \left(
 	\begin{array}{clr}
-		0 & t_3 & -t_2 \\
-		-t_3 & 0 & t_1 \\
-		t_2 & -t_1 & 0
+		0 & -t_3 & t_2 \\
+		t_3 & 0 & -t_1 \\
+		-t_2 & t_1 & 0
 	\end{array}
 \right)	
 \end{equation}
 
 For correspondence $p_1$, $p_2$, it is well know that
 \begin{equation}
+\label{EpipolarConstraints}
 {p_2}^\top E p_1 = 0
 \end{equation}
+
+\textbf{Rodrigues' rotation formula} 
+Given a 3D unit rotation axis vector $r = (r_x, r_y, r_z)^\top$ and a rotation angle $\theta$, it is easy to find the the corresponding rotation matrix using Rodrigues' rotation formula. 
+\begin{equation}
+\label{Rodrigues}
+R(\theta, r) = \cos \theta I + (1 - \cos \theta) r r^\top + \sin \theta [ r ]_\times
+\end{equation}
+where $I$ is a $3 \times 3$ identity matrix. 
+
+\textbf{Theorem}
+The rotation angle of camera and odometer is always the same. 
+
+This is a very well known fact for rigid motion. Detailed proof can be found in many textbooks on mechanics. This fact mean that without calibrating the extrinsic parameters between camera odometer, we can directly obtained the camera rotation angle by subtracting the yaw angle reading between the current and the previous frame. 
+
+
+\section{Algorithm}
+\label{Algorithm}
+
+\subsection{Problem Formation}
+Substituting Eq.(\ref{Rodrigues}) into Eq.(\ref{EssentialDecomposition}). We can denote the Essential Matrix as 
+\begin{equation}
+E(\theta, r, t) = [t]_\times \left( \cos \theta I + (1 - \cos \theta) r r^\top + \sin \theta [ r ]_\times \right)
+\end{equation}
+where $r$ is a 3D unit vector and $t$ can also be assumed to be unit since it is up to scale. Since we assume that we know $\theta$ from odometer reading, this means that the 5DoF camera relative pose now only have 4 DoF. By using 4 image points correspondences, we can solve $r$ and $t$. 
+
+Thus the equation system for solving relative pose can be form as follows. 
+\begin{eqnarray}
+\label{ProblemEquation1}
+{p_2^i}^\top E(\theta, r, t) p_1^i & = 0,& i = 1, 2, 3, 4 \\
+\label{ProblemEquation2}
+|| r ||^2 & = 1 & \\
+\label{ProblemEquation3}
+|| t ||^2 & = 1 &
+\end{eqnarray}
+where $r = (r_x, r_y, r_z)^\top$ and $t = (t_x, t_y, t_z)^\top$ are six unknowns. 
+
+\subsection{Solution}
+Equation system (\ref{ProblemEquation1}) includes 4 polynomials with the highest monomial in the form of $t_\star r_\star r_\star$, where $\star$ denotes any arrangement of $x$, $y$, $z$. Eq.(\ref{ProblemEquation2}) and Eq.(\ref{ProblemEquation3}) are two quadratic polynomials. 
+
+The degree and the number of equations for this equation system is very high  compared with other normal minimal solution problem. In our experiment, we attempted to reduce it using Resualtant Method in Maple. However, this attempt failed as it exceeded the PC memory capacity after one hour running. A working way to solve the system is to use Groebner basis. In our experiment, we use the automatic generator of Groebner solver developed by [x]. After possible simplification, the solver still required executing a Gauss-Jordan elimination on a $270 \times 290$ matrix. In this paper, we proposed a method to use Powell's Hybrid method [] to solve the above equation system. 
+
+Expanding Eq.\ref{ProblemEquation1}, we can denote the equations in the following form. 
+\begin{equation}
+f_1^i(r_x, r_y, r_z) t_x + f_2^i(r_x, r_y, r_z) t_y + f_3^i(r_x, r_y, r_z) t_z = 0
+\end{equation}
+where $i = 1, 2, 3, 4$. $f_\star^i$ is a polynomial of $r_x$, $r_y$ and $r_z$. We can further stack $f_\star^i$ into a matrix as follows. 
+\begin{equation}
+F(r_x, r_y, r_z) t \equiv \left( 
+	\begin{array}{clr}
+	f_1^1 & f_2^1 & f_3^1 \\
+	f_1^2 & f_2^2 & f_3^2 \\
+	f_1^3 & f_2^3 & f_3^3 \\
+	f_1^4 & f_2^4 & f_3^4 \\	
+	\end{array}
+\right) \left(
+	\begin{array}{clr}
+	t_x \\ t_y \\t_z
+	\end{array}
+\right) = 0	
+\end{equation}
+Since we assume that $||t||^2 = 1$, the rank of $F$ must be $2$. This means that the determinant of all $3 \time 3$ submatrices must be 0. We form this as follows. 
+\begin{eqnarray}
+\label{SimplifiedEquation1}
+\left| 
+	\begin{array}{clr}
+	f_1^1 & f_2^1 & f_3^1 \\
+	f_1^2 & f_2^2 & f_3^2 \\
+	f_1^3 & f_2^3 & f_3^3 \\
+	\end{array}
+\right| = 0 \\ 
+\label{SimplifiedEquation2}
+\left| 
+	\begin{array}{clr}
+	f_1^2 & f_2^2 & f_3^2 \\
+	f_1^3 & f_2^3 & f_3^3 \\
+	f_1^4 & f_2^4 & f_3^4 \\	
+	\end{array}
+\right| = 0 
+\end{eqnarray}
+
+Combining Eq.(\ref{SimplifiedEquation1}), Eq.(\ref{SimplifiedEquation2}) and Eq.(\ref{ProblemEquation3}), we have a new equation system on $r_x$, $r_y$, $r_z$. Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) are of 5 degree. Notice that Eq.(\ref{ProblemEquation3}) implies that $(r_x, r_y, r_z)^\top$ is on a unit sphere. We can parametrize it as 2D point and then use gradient descend method like Powell's Hybrid method to find a root from an initial point. In our experiment, we used $100$ initial points drawn by uniform sampling on a sphere. This setting could always result in a proper solution and fails very rarely. After $r_x$, $r_y$, $r_z$ are solved, $F$ is then obtained and $t$ can be solved as the nullvector of $F$. 
+
+
+
 
 \end{document}
