@@ -426,17 +426,47 @@ SparseGraph::readFromFile(const std::string& filename)
     }
 
     // parse xml file
+
+    // odometer and 3D feature structures are in global scope as
+    // multiple frames from multiple cameras reference these structures
     unsigned int nCameras;
     doc.RootElement()->QueryUnsignedAttribute("cameras_size", &nCameras);
     mFrameSegments.resize(nCameras);
 
+    FrameSegment frameMap;
+    std::vector<tinyxml2::XMLElement*> frameXMLMap;
+    std::vector<PosePtr> poseMap;
+    std::vector<OdometerPtr> odometerMap;
+    std::vector<Point2DFeaturePtr> feature2DMap;
+    std::vector<tinyxml2::XMLElement*> feature2DXMLMap;
+    std::vector<Point3DFeaturePtr> feature3DMap;
+    std::vector<tinyxml2::XMLElement*> feature3DXMLMap;
+
+    tinyxml2::XMLElement* eFrames = doc.RootElement()->FirstChildElement("frames");
+    tinyxml2::XMLElement* ePoses = doc.RootElement()->FirstChildElement("poses");
     tinyxml2::XMLElement* eOdometers = doc.RootElement()->FirstChildElement("odometers");
+    tinyxml2::XMLElement* eFeatures2D = doc.RootElement()->FirstChildElement("features2D");
+    tinyxml2::XMLElement* eFeatures3D = doc.RootElement()->FirstChildElement("features3D");
+
+    unsigned int nFrames;
+    eFrames->QueryUnsignedAttribute("size", &nFrames);
+    XMLToFrames(eFrames, nFrames, frameMap, frameXMLMap, rootDir);
+
+    unsigned int nPoses;
+    ePoses->QueryUnsignedAttribute("size", &nPoses);
+    XMLToPoses(ePoses, nPoses, poseMap);
 
     unsigned int nOdometers;
     eOdometers->QueryUnsignedAttribute("size", &nOdometers);
-
-    std::vector<OdometerPtr> odometerMap;
     XMLToOdometers(eOdometers, nOdometers, odometerMap);
+
+    unsigned int nFeatures2D;
+    eFeatures2D->QueryUnsignedAttribute("size", &nFeatures2D);
+    XMLToPoint2DFeatures(eFeatures2D, nFeatures2D, feature2DMap, feature2DXMLMap);
+
+    unsigned int nFeatures3D;
+    eFeatures3D->QueryUnsignedAttribute("size", &nFeatures3D);
+    XMLToPoint3DFeatures(eFeatures3D, nFeatures3D, feature3DMap, feature3DXMLMap);
 
     for (size_t cameraIdx = 0; cameraIdx < mFrameSegments.size(); ++cameraIdx)
     {
@@ -454,185 +484,170 @@ SparseGraph::readFromFile(const std::string& filename)
             sprintf(segmentName, "segment%lu", segmentIdx);
             tinyxml2::XMLElement* eSegment = eCamera->FirstChildElement(segmentName);
 
-            // index all structures
-            std::vector<PosePtr> poseMap;
-            FrameSegment frameMap;
-            std::vector<tinyxml2::XMLElement*> frameXMLMap;
-            std::vector<Point2DFeaturePtr> feature2DMap;
-            std::vector<Point3DFeaturePtr> feature3DMap;
-            std::vector<tinyxml2::XMLElement*> feature2DXMLMap;
-            std::vector<tinyxml2::XMLElement*> feature3DXMLMap;
-
-            tinyxml2::XMLElement* eFrames = eSegment->FirstChildElement("frames");
-            tinyxml2::XMLElement* ePoses = eSegment->FirstChildElement("poses");
-            tinyxml2::XMLElement* eFeatures2D = eSegment->FirstChildElement("features2D");
-            tinyxml2::XMLElement* eFeatures3D = eSegment->FirstChildElement("features3D");
-
-            unsigned int nFrames;
-            eFrames->QueryUnsignedAttribute("size", &nFrames);
-            XMLToFrames(eFrames, nFrames, frameMap, frameXMLMap, rootDir);
-
-            unsigned int nPoses;
-            ePoses->QueryUnsignedAttribute("size", &nPoses);
-            XMLToPoses(ePoses, nPoses, poseMap);
-
-            unsigned int nFeatures2D;
-            eFeatures2D->QueryUnsignedAttribute("size", &nFeatures2D);
-            XMLToPoint2DFeatures(eFeatures2D, nFeatures2D, feature2DMap, feature2DXMLMap);
-
-            unsigned int nFeatures3D;
-            eFeatures3D->QueryUnsignedAttribute("size", &nFeatures3D);
-            XMLToPoint3DFeatures(eFeatures3D, nFeatures3D, feature3DMap, feature3DXMLMap);
+            unsigned int nFramesSegment;
+            eSegment->QueryUnsignedAttribute("frames_size", &nFramesSegment);
 
             FrameSegment& segment = mFrameSegments.at(cameraIdx).at(segmentIdx);
-            segment.resize(nFrames);
+            segment.resize(nFramesSegment);
 
-            // link all references
-            for (size_t i = 0; i < frameMap.size(); ++i)
+            const tinyxml2::XMLAttribute* aFramesSegment = eSegment->FirstChildElement("frames")->FirstAttribute();
+            for (size_t i = 0; i < segment.size(); ++i)
             {
-                FramePtr& frame = segment.at(i);
-                frame = frameMap.at(i);
+                unsigned int key;
+                sscanf(aFramesSegment->Name(), "frame%u", &key);
 
-                tinyxml2::XMLElement* eFrame = frameXMLMap.at(i);
+                unsigned int value;
+                sscanf(aFramesSegment->Value(), "frame%u", &value);
 
-                const char* cameraName = eFrame->Attribute("camera");
-                if (cameraName != 0)
-                {
-                    size_t poseIdx;
-                    sscanf(cameraName, "pose%lu", &poseIdx);
+                segment.at(key) = frameMap.at(value);
 
-                    frame->camera() = poseMap.at(poseIdx);
-                }
-
-                const char* odometerName = eFrame->Attribute("odometer");
-                if (odometerName != 0)
-                {
-                    size_t odometerIdx;
-                    sscanf(odometerName, "odometer%lu", &odometerIdx);
-
-                    frame->odometer() = odometerMap.at(odometerIdx);
-                }
-
-                unsigned int nFeatures2D;
-                eFrame->QueryUnsignedAttribute("features2D_size", &nFeatures2D);
-                std::vector<Point2DFeaturePtr>& features2D = frame->features2D();
-                features2D.resize(nFeatures2D);
-
-                const tinyxml2::XMLAttribute* aFeatures2D = eFrame->FirstChildElement("features2D")->FirstAttribute();
-                for (size_t i = 0; i < features2D.size(); ++i)
-                {
-                    unsigned int key;
-                    sscanf(aFeatures2D->Name(), "features2D_%u", &key);
-
-                    unsigned int value;
-                    sscanf(aFeatures2D->Value(), "F2D-%u", &value);
-
-                    features2D.at(key) = feature2DMap.at(value);
-
-                    aFeatures2D = aFeatures2D->Next();
-                }
-
-                unsigned int nFeatures3D;
-                eFrame->QueryUnsignedAttribute("features3D_size", &nFeatures3D);
-                std::vector<Point3DFeaturePtr>& features3D = frame->features3D();
-                features3D.resize(nFeatures3D);
-
-                const tinyxml2::XMLAttribute* aFeatures3D = eFrame->FirstChildElement("features3D")->FirstAttribute();
-                for (size_t i = 0; i < features3D.size(); ++i)
-                {
-                    unsigned int key;
-                    sscanf(aFeatures3D->Name(), "features3D_%u", &key);
-
-                    unsigned int value;
-                    sscanf(aFeatures3D->Value(), "F3D-%u", &value);
-
-                    features3D.at(key) = feature3DMap.at(value);
-
-                    aFeatures3D = aFeatures3D->Next();
-                }
+                aFramesSegment = aFramesSegment->Next();
             }
+        }
+    }
 
-            for (size_t i = 0; i < feature2DXMLMap.size(); ++i)
-            {
-                Point2DFeaturePtr& feature2D = feature2DMap.at(i);
-                tinyxml2::XMLElement* eFeature2D = feature2DXMLMap.at(i);
+    // link all references
+    for (size_t i = 0; i < frameXMLMap.size(); ++i)
+    {
+        FramePtr& frame = frameMap.at(i);
+        tinyxml2::XMLElement* eFrame = frameXMLMap.at(i);
 
-                unsigned int nPrevMatches;
-                eFeature2D->QueryUnsignedAttribute("prev_matches_size", &nPrevMatches);
-                feature2D->prevMatches().resize(nPrevMatches);
+        const char* cameraName = eFrame->Attribute("camera");
+        if (cameraName != 0)
+        {
+            size_t poseIdx;
+            sscanf(cameraName, "pose%lu", &poseIdx);
 
-                const tinyxml2::XMLAttribute* aFeature2DPrevMatches = eFeature2D->FirstChildElement("prev_matches")->FirstAttribute();
-                for (size_t j = 0; j < feature2D->prevMatches().size(); ++j)
-                {
-                    unsigned int key;
-                    sscanf(aFeature2DPrevMatches->Name(), "prev_matches_%u", &key);
+            frame->camera() = poseMap.at(poseIdx);
+        }
 
-                    unsigned int value;
-                    sscanf(aFeature2DPrevMatches->Value(), "F2D-%u", &value);
+        const char* odometerName = eFrame->Attribute("odometer");
+        if (odometerName != 0)
+        {
+            size_t odometerIdx;
+            sscanf(odometerName, "odometer%lu", &odometerIdx);
 
-                    feature2D->prevMatches().at(key) = feature2DMap.at(value);
+            frame->odometer() = odometerMap.at(odometerIdx);
+        }
 
-                    aFeature2DPrevMatches = aFeature2DPrevMatches->Next();
-                }
+        unsigned int nFeatures2D;
+        eFrame->QueryUnsignedAttribute("features2D_size", &nFeatures2D);
+        std::vector<Point2DFeaturePtr>& features2D = frame->features2D();
+        features2D.resize(nFeatures2D);
 
-                unsigned int nNextMatches;
-                eFeature2D->QueryUnsignedAttribute("next_matches_size", &nNextMatches);
-                feature2D->nextMatches().resize(nNextMatches);
+        const tinyxml2::XMLAttribute* aFeatures2D = eFrame->FirstChildElement("features2D")->FirstAttribute();
+        for (size_t i = 0; i < features2D.size(); ++i)
+        {
+            unsigned int key;
+            sscanf(aFeatures2D->Name(), "features2D_%u", &key);
 
-                const tinyxml2::XMLAttribute* aFeature2DNextMatches = eFeature2D->FirstChildElement("next_matches")->FirstAttribute();
-                for (size_t j = 0; j < feature2D->nextMatches().size(); ++j)
-                {
-                    unsigned int key;
-                    sscanf(aFeature2DNextMatches->Name(), "next_matches_%u", &key);
+            unsigned int value;
+            sscanf(aFeatures2D->Value(), "F2D-%u", &value);
 
-                    unsigned int value;
-                    sscanf(aFeature2DNextMatches->Value(), "F2D-%u", &value);
+            features2D.at(key) = feature2DMap.at(value);
 
-                    feature2D->nextMatches().at(key) = feature2DMap.at(value);
+            aFeatures2D = aFeatures2D->Next();
+        }
 
-                    aFeature2DPrevMatches = aFeature2DNextMatches->Next();
-                }
+        unsigned int nFeatures3D;
+        eFrame->QueryUnsignedAttribute("features3D_size", &nFeatures3D);
+        std::vector<Point3DFeaturePtr>& features3D = frame->features3D();
+        features3D.resize(nFeatures3D);
 
-                const char* feature3DName = eFeature2D->Attribute("feature3D");
-                if (feature3DName != 0)
-                {
-                    size_t feature3DIdx;
-                    sscanf(feature3DName, "F3D-%lu", &feature3DIdx);
+        const tinyxml2::XMLAttribute* aFeatures3D = eFrame->FirstChildElement("features3D")->FirstAttribute();
+        for (size_t i = 0; i < features3D.size(); ++i)
+        {
+            unsigned int key;
+            sscanf(aFeatures3D->Name(), "features3D_%u", &key);
 
-                    feature2D->feature3D() = feature3DMap.at(feature3DIdx);
-                }
+            unsigned int value;
+            sscanf(aFeatures3D->Value(), "F3D-%u", &value);
 
-                size_t frameIdx;
-                sscanf(eFeature2D->Attribute("frame"), "frame%lu", &frameIdx);
-                feature2D->frame() = frameMap.at(frameIdx);
-            }
+            features3D.at(key) = feature3DMap.at(value);
 
-            for (size_t i = 0; i < feature3DXMLMap.size(); ++i)
-            {
-                Point3DFeaturePtr& feature3D = feature3DMap.at(i);
-                tinyxml2::XMLElement* eFeature3D = feature3DXMLMap.at(i);
+            aFeatures3D = aFeatures3D->Next();
+        }
+    }
 
-                unsigned int nFeatures2D;
-                eFeature3D->QueryUnsignedAttribute("features2D_size", &nFeatures2D);
-                feature3D->features2D().resize(nFeatures2D);
+    for (size_t i = 0; i < feature2DXMLMap.size(); ++i)
+    {
+        Point2DFeaturePtr& feature2D = feature2DMap.at(i);
+        tinyxml2::XMLElement* eFeature2D = feature2DXMLMap.at(i);
 
-                const tinyxml2::XMLAttribute* aFeatures2DCorr = eFeature3D->FirstChildElement("features2D")->FirstAttribute();
-                for (size_t j = 0; j < feature3D->features2D().size(); ++j)
-                {
-                    unsigned int key;
-                    sscanf(aFeatures2DCorr->Name(), "features2D_%u", &key);
+        unsigned int nPrevMatches;
+        eFeature2D->QueryUnsignedAttribute("prev_matches_size", &nPrevMatches);
+        feature2D->prevMatches().resize(nPrevMatches);
 
-                    unsigned int value;
-                    sscanf(aFeatures2DCorr->Value(), "F2D-%u", &value);
+        const tinyxml2::XMLAttribute* aFeature2DPrevMatches = eFeature2D->FirstChildElement("prev_matches")->FirstAttribute();
+        for (size_t j = 0; j < feature2D->prevMatches().size(); ++j)
+        {
+            unsigned int key;
+            sscanf(aFeature2DPrevMatches->Name(), "prev_matches_%u", &key);
 
-                    char keyName[255];
-                    sprintf(keyName, "features2D_%lu", j);
+            unsigned int value;
+            sscanf(aFeature2DPrevMatches->Value(), "F2D-%u", &value);
 
-                    feature3D->features2D().at(key) = feature2DMap.at(value);
+            feature2D->prevMatches().at(key) = feature2DMap.at(value);
 
-                    aFeatures2DCorr = aFeatures2DCorr->Next();
-                }
-            }
+            aFeature2DPrevMatches = aFeature2DPrevMatches->Next();
+        }
+
+        unsigned int nNextMatches;
+        eFeature2D->QueryUnsignedAttribute("next_matches_size", &nNextMatches);
+        feature2D->nextMatches().resize(nNextMatches);
+
+        const tinyxml2::XMLAttribute* aFeature2DNextMatches = eFeature2D->FirstChildElement("next_matches")->FirstAttribute();
+        for (size_t j = 0; j < feature2D->nextMatches().size(); ++j)
+        {
+            unsigned int key;
+            sscanf(aFeature2DNextMatches->Name(), "next_matches_%u", &key);
+
+            unsigned int value;
+            sscanf(aFeature2DNextMatches->Value(), "F2D-%u", &value);
+
+            feature2D->nextMatches().at(key) = feature2DMap.at(value);
+
+            aFeature2DPrevMatches = aFeature2DNextMatches->Next();
+        }
+
+        const char* feature3DName = eFeature2D->Attribute("feature3D");
+        if (feature3DName != 0)
+        {
+            size_t feature3DIdx;
+            sscanf(feature3DName, "F3D-%lu", &feature3DIdx);
+
+            feature2D->feature3D() = feature3DMap.at(feature3DIdx);
+        }
+
+        size_t frameIdx;
+        sscanf(eFeature2D->Attribute("frame"), "frame%lu", &frameIdx);
+        feature2D->frame() = frameMap.at(frameIdx);
+    }
+
+    for (size_t i = 0; i < feature3DXMLMap.size(); ++i)
+    {
+        Point3DFeaturePtr& feature3D = feature3DMap.at(i);
+        tinyxml2::XMLElement* eFeature3D = feature3DXMLMap.at(i);
+
+        unsigned int nFeatures2D;
+        eFeature3D->QueryUnsignedAttribute("features2D_size", &nFeatures2D);
+        feature3D->features2D().resize(nFeatures2D);
+
+        const tinyxml2::XMLAttribute* aFeatures2DCorr = eFeature3D->FirstChildElement("features2D")->FirstAttribute();
+        for (size_t j = 0; j < feature3D->features2D().size(); ++j)
+        {
+            unsigned int key;
+            sscanf(aFeatures2DCorr->Name(), "features2D_%u", &key);
+
+            unsigned int value;
+            sscanf(aFeatures2DCorr->Value(), "F2D-%u", &value);
+
+            char keyName[255];
+            sprintf(keyName, "features2D_%lu", j);
+
+            feature3D->features2D().at(key) = feature2DMap.at(value);
+
+            aFeatures2DCorr = aFeatures2DCorr->Next();
         }
     }
 
@@ -668,10 +683,29 @@ SparseGraph::writeToFile(const std::string& filename) const
     doc.InsertEndChild(eRoot);
     eRoot->SetAttribute("cameras_size", static_cast<unsigned int>(mFrameSegments.size()));
 
+    boost::unordered_map<Frame*,size_t> frameMap;
+    boost::unordered_map<Frame*,tinyxml2::XMLElement*> frameXMLMap;
+    boost::unordered_map<const Pose*,size_t> poseMap;
     boost::unordered_map<const Odometer*,size_t> odometerMap;
+    boost::unordered_map<const Point2DFeature*,size_t> feature2DMap;
+    boost::unordered_map<const Point2DFeature*,tinyxml2::XMLElement*> feature2DXMLMap;
+    boost::unordered_map<const Point3DFeature*,size_t> feature3DMap;
+    boost::unordered_map<const Point3DFeature*,tinyxml2::XMLElement*> feature3DXMLMap;
+
+    tinyxml2::XMLElement* eFrames = doc.NewElement("frames");
+    eRoot->InsertEndChild(eFrames);
+
+    tinyxml2::XMLElement* ePoses = doc.NewElement("poses");
+    eRoot->InsertEndChild(ePoses);
 
     tinyxml2::XMLElement* eOdometers = doc.NewElement("odometers");
     eRoot->InsertEndChild(eOdometers);
+
+    tinyxml2::XMLElement* eFeatures2D = doc.NewElement("features2D");
+    eRoot->InsertEndChild(eFeatures2D);
+
+    tinyxml2::XMLElement* eFeatures3D = doc.NewElement("features3D");
+    eRoot->InsertEndChild(eFeatures3D);
 
     for (size_t cameraIdx = 0; cameraIdx < mFrameSegments.size(); ++cameraIdx)
     {
@@ -690,32 +724,22 @@ SparseGraph::writeToFile(const std::string& filename) const
             tinyxml2::XMLElement* eSegment = doc.NewElement(segmentName);
             eCamera->InsertEndChild(eSegment);
 
+            eSegment->SetAttribute("frames_size", static_cast<unsigned int>(segment.size()));
+
+            tinyxml2::XMLElement* eFramesSegment = doc.NewElement("frames");
+            eSegment->InsertEndChild(eFramesSegment);
+
             // index all structures
-            boost::unordered_map<const Pose*,size_t> poseMap;
-            boost::unordered_map<const Frame*,size_t> frameMap;
-            boost::unordered_map<const Frame*,tinyxml2::XMLElement*> frameXMLMap;
-            boost::unordered_map<const Point2DFeature*,size_t> feature2DMap;
-            boost::unordered_map<const Point2DFeature*,tinyxml2::XMLElement*> feature2DXMLMap;
-            boost::unordered_map<const Point3DFeature*,size_t> feature3DMap;
-            boost::unordered_map<const Point3DFeature*,tinyxml2::XMLElement*> feature3DXMLMap;
-
-            tinyxml2::XMLElement* eFrames = doc.NewElement("frames");
-            eSegment->InsertEndChild(eFrames);
-
-            tinyxml2::XMLElement* ePoses = doc.NewElement("poses");
-            eSegment->InsertEndChild(ePoses);
-
-            tinyxml2::XMLElement* eFeatures2D = doc.NewElement("features2D");
-            eSegment->InsertEndChild(eFeatures2D);
-
-            tinyxml2::XMLElement* eFeatures3D = doc.NewElement("features3D");
-            eSegment->InsertEndChild(eFeatures3D);
-
             for (size_t frameIdx = 0; frameIdx < segment.size(); ++frameIdx)
             {
                 FramePtr frame = segment.at(frameIdx);
 
                 tinyxml2::XMLElement* eFrame = frameToXML(frame, doc, eFrames, frameMap, frameXMLMap, imageDir);
+
+                char key[255];
+                sprintf(key, "frame%lu", frameIdx);
+
+                eFramesSegment->SetAttribute(key, eFrame->Name());
 
                 if (!frame->camera().empty())
                 {
@@ -752,158 +776,159 @@ SparseGraph::writeToFile(const std::string& filename) const
                     point3DFeatureToXML(feature3D, doc, eFeatures3D, feature3DMap, feature3DXMLMap);
                 }
             }
-
-            eFrames->SetAttribute("size", static_cast<unsigned int>(segment.size()));
-            ePoses->SetAttribute("size", static_cast<unsigned int>(poseMap.size()));
-            eFeatures2D->SetAttribute("size", static_cast<unsigned int>(feature2DMap.size()));
-            eFeatures3D->SetAttribute("size", static_cast<unsigned int>(feature3DMap.size()));
-
-            // link all references
-            for (size_t frameIdx = 0; frameIdx < segment.size(); ++frameIdx)
-            {
-                FramePtr frame = segment.at(frameIdx);
-                tinyxml2::XMLElement* eFrame = frameXMLMap[frame];
-
-                if (!frame->camera().empty())
-                {
-                    char poseName[255];
-                    sprintf(poseName, "pose%lu", poseMap[frame->camera()]);
-                    eFrame->SetAttribute("camera", poseName);
-                }
-
-                if (!frame->odometer().empty())
-                {
-                    char odometerName[255];
-                    sprintf(odometerName, "odometer%lu", odometerMap[frame->odometer()]);
-                    eFrame->SetAttribute("odometer", odometerName);
-                }
-
-                eFrame->SetAttribute("features2D_size", static_cast<unsigned int>(frame->features2D().size()));
-
-                tinyxml2::XMLElement* eFeatures2DFrame = doc.NewElement("features2D");
-                eFrame->InsertEndChild(eFeatures2DFrame);
-
-                std::vector<Point2DFeaturePtr>& features2D = frame->features2D();
-                for (size_t i = 0; i < features2D.size(); ++i)
-                {
-                    Point2DFeaturePtr& feature2D = features2D.at(i);
-
-                    char feature2DName[255];
-                    sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D]);
-
-                    char keyName[255];
-                    sprintf(keyName, "features2D_%lu", i);
-                    eFeatures2DFrame->SetAttribute(keyName, feature2DName);
-                }
-
-                eFrame->SetAttribute("features3D_size", static_cast<unsigned int>(frame->features3D().size()));
-
-                tinyxml2::XMLElement* eFeatures3DFrame = doc.NewElement("features3D");
-                eFrame->InsertEndChild(eFeatures3DFrame);
-
-                std::vector<Point3DFeaturePtr>& features3D = frame->features3D();
-                for (size_t i = 0; i < features3D.size(); ++i)
-                {
-                    Point3DFeaturePtr& feature3D = features3D.at(i);
-
-                    char feature3DName[255];
-                    sprintf(feature3DName, "F3D-%lu", feature3DMap[feature3D]);
-
-                    char keyName[255];
-                    sprintf(keyName, "features3D_%lu", i);
-                    eFeatures3DFrame->SetAttribute(keyName, feature3DName);
-                }
-            }
-
-            for (boost::unordered_map<const Point2DFeature*,tinyxml2::XMLElement*>::iterator it = feature2DXMLMap.begin();
-                     it != feature2DXMLMap.end(); ++it)
-            {
-                const Point2DFeature* feature2D = it->first;
-                tinyxml2::XMLElement* eFeature2D = it->second;
-
-                eFeature2D->SetAttribute("prev_matches_size", static_cast<unsigned int>(feature2D->prevMatches().size()));
-
-                tinyxml2::XMLElement* eFeature2DPrevMatches = doc.NewElement("prev_matches");
-                eFeature2D->InsertEndChild(eFeature2DPrevMatches);
-
-                for (size_t j = 0; j < feature2D->prevMatches().size(); ++j)
-                {
-                    char keyName[255];
-                    sprintf(keyName, "prev_matches_%lu", j);
-
-                    if (feature2D->prevMatches().at(j).empty())
-                    {
-                        std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
-                    }
-
-                    char feature2DName[255];
-                    sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D->prevMatches().at(j)]);
-                    eFeature2DPrevMatches->SetAttribute(keyName, feature2DName);
-                }
-
-                eFeature2D->SetAttribute("next_matches_size", static_cast<unsigned int>(feature2D->nextMatches().size()));
-
-                tinyxml2::XMLElement* eFeature2DNextMatches = doc.NewElement("next_matches");
-                eFeature2D->InsertEndChild(eFeature2DNextMatches);
-
-                eFeature2D->SetAttribute("next_matches_size", static_cast<unsigned int>(feature2D->nextMatches().size()));
-                for (size_t j = 0; j < feature2D->nextMatches().size(); ++j)
-                {
-                    char keyName[255];
-                    sprintf(keyName, "next_matches_%lu", j);
-
-                    if (feature2D->nextMatches().at(j).empty())
-                    {
-                        std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
-                    }
-
-                    char feature2DName[255];
-                    sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D->nextMatches().at(j)]);
-                    eFeature2DNextMatches->SetAttribute(keyName, feature2DName);
-                }
-
-                if (!feature2D->feature3D().empty())
-                {
-                    char feature3DName[255];
-                    sprintf(feature3DName, "F3D-%lu", feature3DMap[feature2D->feature3D()]);
-                    eFeature2D->SetAttribute("feature3D", feature3DName);
-                }
-
-                char frameName[255];
-                sprintf(frameName, "frame%lu", frameMap[feature2D->frame()]);
-                eFeature2D->SetAttribute("frame", frameName);
-            }
-
-            for (boost::unordered_map<const Point3DFeature*,tinyxml2::XMLElement*>::iterator it = feature3DXMLMap.begin();
-                     it != feature3DXMLMap.end(); ++it)
-            {
-                const Point3DFeature* feature3D = it->first;
-                tinyxml2::XMLElement* eFeature3D = it->second;
-
-                eFeature3D->SetAttribute("features2D_size", static_cast<unsigned int>(feature3D->features2D().size()));
-
-                tinyxml2::XMLElement* eFeature2DCorr = doc.NewElement("features2D");
-                eFeature3D->InsertEndChild(eFeature2DCorr);
-
-                for (size_t j = 0; j < feature3D->features2D().size(); ++j)
-                {
-                    char keyName[255];
-                    sprintf(keyName, "features2D_%lu", j);
-
-                    if (feature3D->features2D().at(j).empty())
-                    {
-                        std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
-                    }
-
-                    char feature2DName[255];
-                    sprintf(feature2DName, "F2D-%lu", feature2DMap[feature3D->features2D().at(j)]);
-                    eFeature2DCorr->SetAttribute(keyName, feature2DName);
-                }
-            }
         }
     }
 
+    // link all references
+    for (boost::unordered_map<Frame*,tinyxml2::XMLElement*>::iterator it = frameXMLMap.begin();
+             it != frameXMLMap.end(); ++it)
+    {
+        Frame* frame = it->first;
+        tinyxml2::XMLElement* eFrame = it->second;
+
+        if (!frame->camera().empty())
+        {
+            char poseName[255];
+            sprintf(poseName, "pose%lu", poseMap[frame->camera()]);
+            eFrame->SetAttribute("camera", poseName);
+        }
+
+        if (!frame->odometer().empty())
+        {
+            char odometerName[255];
+            sprintf(odometerName, "odometer%lu", odometerMap[frame->odometer()]);
+            eFrame->SetAttribute("odometer", odometerName);
+        }
+
+        eFrame->SetAttribute("features2D_size", static_cast<unsigned int>(frame->features2D().size()));
+
+        tinyxml2::XMLElement* eFeatures2DFrame = doc.NewElement("features2D");
+        eFrame->InsertEndChild(eFeatures2DFrame);
+
+        std::vector<Point2DFeaturePtr>& features2D = frame->features2D();
+        for (size_t i = 0; i < features2D.size(); ++i)
+        {
+            Point2DFeaturePtr& feature2D = features2D.at(i);
+
+            char feature2DName[255];
+            sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D]);
+
+            char keyName[255];
+            sprintf(keyName, "features2D_%lu", i);
+            eFeatures2DFrame->SetAttribute(keyName, feature2DName);
+        }
+
+        eFrame->SetAttribute("features3D_size", static_cast<unsigned int>(frame->features3D().size()));
+
+        tinyxml2::XMLElement* eFeatures3DFrame = doc.NewElement("features3D");
+        eFrame->InsertEndChild(eFeatures3DFrame);
+
+        std::vector<Point3DFeaturePtr>& features3D = frame->features3D();
+        for (size_t i = 0; i < features3D.size(); ++i)
+        {
+            Point3DFeaturePtr& feature3D = features3D.at(i);
+
+            char feature3DName[255];
+            sprintf(feature3DName, "F3D-%lu", feature3DMap[feature3D]);
+
+            char keyName[255];
+            sprintf(keyName, "features3D_%lu", i);
+            eFeatures3DFrame->SetAttribute(keyName, feature3DName);
+        }
+    }
+
+    for (boost::unordered_map<const Point2DFeature*,tinyxml2::XMLElement*>::iterator it = feature2DXMLMap.begin();
+             it != feature2DXMLMap.end(); ++it)
+    {
+        const Point2DFeature* feature2D = it->first;
+        tinyxml2::XMLElement* eFeature2D = it->second;
+
+        eFeature2D->SetAttribute("prev_matches_size", static_cast<unsigned int>(feature2D->prevMatches().size()));
+
+        tinyxml2::XMLElement* eFeature2DPrevMatches = doc.NewElement("prev_matches");
+        eFeature2D->InsertEndChild(eFeature2DPrevMatches);
+
+        for (size_t i = 0; i < feature2D->prevMatches().size(); ++i)
+        {
+            char keyName[255];
+            sprintf(keyName, "prev_matches_%lu", i);
+
+            if (feature2D->prevMatches().at(i).empty())
+            {
+                std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
+            }
+
+            char feature2DName[255];
+            sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D->prevMatches().at(i)]);
+            eFeature2DPrevMatches->SetAttribute(keyName, feature2DName);
+        }
+
+        eFeature2D->SetAttribute("next_matches_size", static_cast<unsigned int>(feature2D->nextMatches().size()));
+
+        tinyxml2::XMLElement* eFeature2DNextMatches = doc.NewElement("next_matches");
+        eFeature2D->InsertEndChild(eFeature2DNextMatches);
+
+        eFeature2D->SetAttribute("next_matches_size", static_cast<unsigned int>(feature2D->nextMatches().size()));
+        for (size_t i = 0; i < feature2D->nextMatches().size(); ++i)
+        {
+            char keyName[255];
+            sprintf(keyName, "next_matches_%lu", i);
+
+            if (feature2D->nextMatches().at(i).empty())
+            {
+                std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
+            }
+
+            char feature2DName[255];
+            sprintf(feature2DName, "F2D-%lu", feature2DMap[feature2D->nextMatches().at(i)]);
+            eFeature2DNextMatches->SetAttribute(keyName, feature2DName);
+        }
+
+        if (!feature2D->feature3D().empty())
+        {
+            char feature3DName[255];
+            sprintf(feature3DName, "F3D-%lu", feature3DMap[feature2D->feature3D()]);
+            eFeature2D->SetAttribute("feature3D", feature3DName);
+        }
+
+        const Frame* frame = feature2D->frame();
+        char frameName[255];
+        sprintf(frameName, "frame%lu", frameMap[const_cast<Frame*>(frame)]);
+        eFeature2D->SetAttribute("frame", frameName);
+    }
+
+    for (boost::unordered_map<const Point3DFeature*,tinyxml2::XMLElement*>::iterator it = feature3DXMLMap.begin();
+             it != feature3DXMLMap.end(); ++it)
+    {
+        const Point3DFeature* feature3D = it->first;
+        tinyxml2::XMLElement* eFeature3D = it->second;
+
+        eFeature3D->SetAttribute("features2D_size", static_cast<unsigned int>(feature3D->features2D().size()));
+
+        tinyxml2::XMLElement* eFeature2DCorr = doc.NewElement("features2D");
+        eFeature3D->InsertEndChild(eFeature2DCorr);
+
+        for (size_t i = 0; i < feature3D->features2D().size(); ++i)
+        {
+            char keyName[255];
+            sprintf(keyName, "features2D_%lu", i);
+
+            if (feature3D->features2D().at(i).empty())
+            {
+                std::cout << "# WARNING: Empty Point2DFeaturePtr instance." << std::endl;
+            }
+
+            char feature2DName[255];
+            sprintf(feature2DName, "F2D-%lu", feature2DMap[feature3D->features2D().at(i)]);
+            eFeature2DCorr->SetAttribute(keyName, feature2DName);
+        }
+    }
+
+    eFrames->SetAttribute("size", static_cast<unsigned int>(frameMap.size()));
+    ePoses->SetAttribute("size", static_cast<unsigned int>(poseMap.size()));
     eOdometers->SetAttribute("size", static_cast<unsigned int>(odometerMap.size()));
+    eFeatures2D->SetAttribute("size", static_cast<unsigned int>(feature2DMap.size()));
+    eFeatures3D->SetAttribute("size", static_cast<unsigned int>(feature3DMap.size()));
 
     doc.SaveFile(filename.c_str());
 }
@@ -911,35 +936,34 @@ SparseGraph::writeToFile(const std::string& filename) const
 tinyxml2::XMLElement*
 SparseGraph::frameToXML(FramePtr& frame, tinyxml2::XMLDocument& doc,
                         tinyxml2::XMLElement* parent,
-                        boost::unordered_map<const Frame*,size_t>& map,
-                        boost::unordered_map<const Frame*,tinyxml2::XMLElement*>& xmlMap,
+                        boost::unordered_map<Frame*,size_t>& map,
+                        boost::unordered_map<Frame*,tinyxml2::XMLElement*>& xmlMap,
                         const boost::filesystem::path& imageDir) const
 {
     char frameName[255];
     sprintf(frameName, "frame%lu", map.size());
+
     tinyxml2::XMLElement* eFrame = doc.NewElement(frameName);
     parent->InsertEndChild(eFrame);
 
     if (!frame->image().empty())
     {
         char imageFilename[1024];
-        sprintf(imageFilename, "%s/%s-%s-%s.png",
-                imageDir.string().c_str(),
-                parent->Parent()->Parent()->ToElement()->Name(),
-                parent->Parent()->ToElement()->Name(), frameName);
+        sprintf(imageFilename, "%s/%s.png",
+                imageDir.string().c_str(), frameName);
         cv::imwrite(imageFilename, frame->image());
 
         memset(imageFilename, 0, 1024);
-        sprintf(imageFilename, "images/%s-%s-%s.png",
-                parent->Parent()->Parent()->ToElement()->Name(),
-                parent->Parent()->ToElement()->Name(), frameName);
+        sprintf(imageFilename, "images/%s.png", frameName);
         eFrame->SetAttribute("image", imageFilename);
     }
 
     eFrame->SetAttribute("id", frame->id());
 
-    map.insert(std::make_pair(frame, map.size()));
-    xmlMap.insert(std::make_pair(frame, eFrame));
+    Frame* pFrame = frame;
+
+    map.insert(std::make_pair(pFrame, map.size()));
+    xmlMap.insert(std::make_pair(pFrame, eFrame));
 
     return eFrame;
 }

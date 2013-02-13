@@ -208,47 +208,49 @@ public:
      * XML file has the following structure:
      *
      * <root cameras_size=nCameras>
+     *   <frames size=nFrames>
+     *     <frame0 image=? id=? camera=pose? odometer=pose? features2D_size=? features3D_size=?>
+     *       <features2D features2D_0=F2D-? ...>
+     *       </features2D>
+     *       <features3D features3D_0=F3D-? ...>
+     *       </features3D>
+     *     </frame0>
+     *     ...
+     *   </frames>
+     *   <poses size=nPoses>
+     *     <pose0 q_x=? q_y=? q_z=? q_w=? t_x=? t_y=? t_z=?>
+     *     </pose0>
+     *     ...
+     *   </poses>
      *   <odometers size=nOdometers>
      *     <odometer0 timestamp=? x=? y=? yaw=?>
      *     </odometer0>
      *     ...
      *   </odometers>
-     *   <camera0 segments_size=nSegments>
-     *     <segment0>
-     *       <frames size=nFrames>
-     *         <frame0 image=? id=? camera=pose? odometer=pose? features2D_size=? features3D_size=?>
-     *           <features2D features2D_0=F2D-? ...>
-     *           </features2D>
-     *           <features3D features3D_0=F3D-? ...>
-     *           </features3D>
-     *         </frame0>
-     *         ...
-     *       </frames>
-     *       <poses size=nPoses>
-     *         <pose0 q_x=? q_y=? q_z=? q_w=? t_x=? t_y=? t_z=?>
-     *         </pose0>
-     *         ...
-     *       </poses>
-     *       <features2D=nFeatures2D>
-     *         <F2D-0 kp_angle=? kp_class_id=? kp_octave=? kp_x=? kp_y=? kp_response=? kp_size=? index=? best_prev_match_idx=? best_next_match_idx=? feature3D=F3D-? frame=frame_?>
-     *           <dtor type=? rows=? cols=?>
-     *             <mat m-0-0=? ...>
-     *             </mat
-     *           </dtor>
-     *           <prev_matches prev_matches_0=F2D_? ...>
-     *           </prev_matches>
-     *           <next_matches next_matches_0=F2D_? ...>
-     *           </next_matches>
-     *         </F2D-0>
-     *         ...
+     *   <features2D=nFeatures2D>
+     *     <F2D-0 kp_angle=? kp_class_id=? kp_octave=? kp_x=? kp_y=? kp_response=? kp_size=? index=? best_prev_match_idx=? best_next_match_idx=? feature3D=F3D-? frame=frame_?>
+     *       <dtor type=? rows=? cols=?>
+     *         <mat m-0-0=? ...>
+     *         </mat
+     *       </dtor>
+     *       <prev_matches prev_matches_0=F2D_? ...>
+     *       </prev_matches>
+     *       <next_matches next_matches_0=F2D_? ...>
+     *       </next_matches>
+     *     </F2D-0>
+     *     ...
+     *   </features2D>
+     *   <features3D=nFeatures3D>
+     *     <F3D-0 x=? y=? z=? features2D_size=?>
+     *       <features2D features2D_0=F2D-? ...>
      *       </features2D>
-     *       <features3D=nFeatures3D>
-     *         <F3D-0 x=? y=? z=? features2D_size=?>
-     *           <features2D features2D_0=F2D-? ...>
-     *           </features2D>
-     *         </F3D-0>
-     *         ...
-     *       </features3D>
+     *     </F3D-0>
+     *     ...
+     *   </features3D>
+     *   <camera0 segments_size=nSegments>
+     *     <segment0 frames_size>
+     *       <frames frame0=? frame1=? ...?
+     *       </frames>
      *     </segment0>
      *     ...
      *   </camera0>
@@ -263,8 +265,8 @@ public:
 private:
     tinyxml2::XMLElement* frameToXML(FramePtr& frame, tinyxml2::XMLDocument& doc,
                                      tinyxml2::XMLElement* parent,
-                                     boost::unordered_map<const Frame*,size_t>& map,
-                                     boost::unordered_map<const Frame*,tinyxml2::XMLElement*>& xmlMap,
+                                     boost::unordered_map<Frame*,size_t>& map,
+                                     boost::unordered_map<Frame*,tinyxml2::XMLElement*>& xmlMap,
                                      const boost::filesystem::path& imageDir) const;
     void XMLToFrames(tinyxml2::XMLElement* parent, unsigned int count,
                      FrameSegment& map,

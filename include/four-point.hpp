@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 
-void findPose(cv::InputArray points1, cv::InputArray points2, 
+void findPose_4pt(cv::InputArray points1, cv::InputArray points2, 
               double angle, double focal, cv::Point2d pp, 
               cv::OutputArrayOfArrays rvecs, cv::OutputArrayOfArrays tvecs, 
               int method, double prob, double threshold, cv::OutputArray _mask); 

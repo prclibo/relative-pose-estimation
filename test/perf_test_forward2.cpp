@@ -1,5 +1,5 @@
 #include "four-point.hpp"
-#include "five-point/five-point.hpp"
+#include "five-point.hpp"
 
 using namespace cv; 
 
@@ -92,7 +92,7 @@ int main()
 //            exit(0); 
         
             std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
-            findPose(x1s_noise, x2s_noise, norm(rvec), focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
+            findPose_4pt(x1s_noise, x2s_noise, norm(rvec), focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
     
             tvec /= norm(tvec); 
 

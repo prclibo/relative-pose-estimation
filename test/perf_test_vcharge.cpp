@@ -2,7 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
-#include "five-point/five-point.hpp"
+#include "five-point.hpp"
 #include "four-point.hpp"
 
 #include "sparse_graph/SparseGraph.h"
@@ -21,7 +21,8 @@ int main()
              0, 0, 0, 1;     
 
     SparseGraph sg; 
-    sg.readFromFile("../../v-charge-data/sparse_graph/frames.xml"); 
+    sg.readFromFile("../../v-charge-data/data_rectified_1/frames.xml"); 
+//    sg.readFromFile("../../v-charge-data/sparse_graph/frames.xml"); 
 //    sg.readFromFile("../../v-charge-data/data_new_new/frames.xml"); 
 
     FrameSegment fs = sg.frameSegments(0).front(); 
@@ -90,7 +91,7 @@ int main()
         
         /*******************************************************/
         std::vector<Mat> rvecs_4pt, tvecs_4pt; 
-        findPose(points1, points2, angle, 300, Point2d(640, 400), rvecs_4pt, tvecs_4pt, CV_RANSAC, 0.99, 1, mask); 
+        findPose_4pt(points1, points2, angle, 300, Point2d(640, 400), rvecs_4pt, tvecs_4pt, CV_RANSAC, 0.99, 1, mask); 
 //        std::cout << countNonZero(mask) << " / " << mask.total() << "   "; 
         Mat R_4pt, t_4pt; 
         Rodrigues(rvecs_4pt.front(), R_4pt); 
