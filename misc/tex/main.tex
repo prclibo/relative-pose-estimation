@@ -1,5 +1,7 @@
 \documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 
+\usepackage{graphicx}
+
 \title{\LARGE \bf
 A 4-point Algorithm for Relative Pose Estimation of a Calibrated Camera with a Relative Rotation Angle
 }
@@ -135,7 +137,9 @@ Since we assume that $||t||^2 = 1$, the rank of $F$ must be $2$. This means that
 \right| = 0 
 \end{eqnarray}
 
-Combining Eq.(\ref{SimplifiedEquation1}), Eq.(\ref{SimplifiedEquation2}) and Eq.(\ref{ProblemEquation3}), we have a new equation system on $r_x$, $r_y$, $r_z$. Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) are of 5 degree. Notice that Eq.(\ref{ProblemEquation3}) implies that $(r_x, r_y, r_z)^\top$ is on a unit sphere. We can parametrize it as 2D point and then use gradient descend method like Powell's Hybrid method to find a root from an initial guess. In our experiment, we used $100$ initial guesses drawn by uniform sampling on a unit sphere. This setting could always reaches a proper solution and fails very rarely. After $r_x$, $r_y$, $r_z$ are solved, $F$ is then obtained and $t$ can be solved as the nullvector of $F$. 
+Combining Eq.(\ref{SimplifiedEquation1}), Eq.(\ref{SimplifiedEquation2}) and Eq.(\ref{ProblemEquation2}), we have a new equation system on $r_x$, $r_y$, $r_z$. Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) are of 5 degree. Notice that Eq.(\ref{ProblemEquation3}) implies that $(r_x, r_y, r_z)^\top$ is on a unit sphere. We can parametrize it as 2D point and then use gradient descend method like Powell's Hybrid method to find a root from an initial guess. In our experiment, we used $100$ initial guesses drawn by uniform sampling on a unit sphere. This setting could always reaches a proper solution and fails very rarely. After $r_x$, $r_y$, $r_z$ are solved, $F$ is then obtained and $t$ can be solved as the nullvector of $F$. 
+
+Note that for multiple roots $r$ exist for the equation system. For each possible solution $(r, t)$, $(r, -t)$ is also a possible solution. By checking reprojection error e.g. Sampon's error, extra solutions can be rejected till only two solutions $(r, t)$ and $(r, -t)$ remain. The extra solution can then be rejected by checking if the reconstructed 3D points have positive depth. This is also called cheirity check in [x]. 
 
 For a set of correspondences detected from an image pair, methods like RANSAC or LMedS can be used to find the optimal estimation and remove outliers. 
 
@@ -150,17 +154,18 @@ The improved implementation of our algorithm will be soon released as open sourc
 \subsection{Performance under noise}
 We use simulation data in this section to test the performance of the algorithm. For related algorithms including 8-point, 7-point, 6-point and 5-point algorithms, it is well admitted that 5-point algorithm outperforms the others for calibrated camera. Therefore, in this section we only compare our algorithm with 5-point algorithm. Detailed comparison between 8, 7, 6, 5-point algorithms can be found from [x, x]. 
 
-To make our experiment comparable with previous research, we kept our simulation setting close to the challenging condition in [x]. The setting is summarized in Table \ref{SettingTable} and Figure \ref{}. 
+To make our experiment comparable with previous research, we kept our simulation setting close to the challenging condition in [x]. The setting is summarized in Table \ref{SettingTable} and Figure \ref{SettingFigure}. According to [x], relative pose estimation algorithm may have different performance under forward motion and backward motion. Thus we, like in [x, x], tested 4-point and 5-point algorithms under the two motions. Translations for forward and sideway motion are $(1, 0, 0)^\top$ and $(0, 0, 1)^\top$, resp, with $5\%$ noise added. Rotations for the two motions are both $I_{3 \times 3}$ with $5\%$ noise added. Relative pose estimation error is measured by the included angle between groundtruth translation and estimated translation. This is based on the fact that translation estimation is much more sensitive than rotation estimation. Some discussion about this can be found from [x]. Image features noise is generated zero mean Gaussian with increasing standard deviation. For the minimal case test, four and five points are generated for 4-point and 5-point algorithms, resp. For the RANSAC case test, we used 50 point to run a RANSAC scheme to generate the best estimation. $1000$ tests are executed for each noise level in the minimal case test. $100$ tests are executed for each noise level in the RANSAC test. Figure \ref{} shows the plot of estimation error against increasing feature noise standard deviation.  In Figure \ref{}a and \ref{}b, we plotted the lower quantile of error at each noise level for tests of minimal case. In Figure \ref{}c and \ref{}d, we plotted the mean error at each noise level for the RANSAC tests. Note we kept the error estimator consistent with those in [x]. From the plots, we can clearly see the improvement of 4-point algorithm compared with 5-point. 
+
 \begin{table}
 \caption{Experiment setting for simulation data. }
 \begin{center}
 \begin{tabular}{|l|l|}
 	\hline	
-	Minimal Distance & 1 \\
+	Minimal Distance & 10 \\
 	\hline
-	Depth & 0.5 \\
+	Depth & 5 \\
 	\hline
-	Baseline & 0.1 \\
+	Baseline & 1 \\
 	\hline
 	Image Size & $350 \times 350$ \\ 
 	\hline	
@@ -168,12 +173,25 @@ To make our experiment comparable with previous research, we kept our simulation
 	\hline	
 	Error Measurement & Translation deviation angle \\ 
 	\hline	
-	Error Estimator & Quantile (minimal case) \\
+	Error Estimator & Lower quantile (minimal case) \\
 	& Mean (RANSAC case) \\
+	\hline
+	Tests per Noise Level & 1000 (minimal case) \\
+	& 100 (RANSAC case) \\
 	\hline	
 \end{tabular} 
 \end{center}
 \label{SettingTable}
 \end{table}
+
+\begin{figure}
+\begin{center}
+	\includegraphics[width=2.5in]{setting.pdf} 
+\end{center}
+\caption{Experiment setting for simulation data. Two dashed cameras show how camera is moved under forward and sideway motion. }
+\label{SettingFigure}
+\end{figure}
+
+In addition to the above tests, we provide a test here to show how the four-point algorithm is influenced by the noise from relative rotation angle sensor. Generally it is not straightforward to model the noise of relative rotation angle sensor. Since the rotation angle is usually obtained by integration of the angular velocity, we assume here that a relative rotation angle $\theta$ is measured as $(1 + e) \theta$ by sensor, where $e$ follows a zero mean Gaussian distribution. This test, we selected the standard deviation of $e$ as 0, 0.02, 0.04, 0.06 and 0.08 and generated 5 plots of translation error and noise level. In this tests, we use the same setting with the above tests, except that translation direction is arbitrary and rotation angle is within $-45 \sim 45$ deg. The plot is shown in Fig.\ref{}. We can find that with error rate $e$ smaller than 0.06, four-point algorithm can give a better result than five-point algorithm. In practice, the error rate of rotation sensor is much smaller than that, which guarantees four-point to have a solid performance. 
 
 \end{document}
