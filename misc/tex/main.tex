@@ -1,28 +1,32 @@
-\documentclass{article}
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}
 
-\title{Four-point algorithm for relative camera pose estimation using uncalibrated odometry reading}
+\title{\LARGE \bf
+A 4-point Algorithm for Relative Pose Estimation of a Calibrated Camera with a Relative Rotation Angle
+}
+
+\author{1234}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-We propose an algorithm to estimate relative camera pose on a robot platform mounted with camera and odometer. This algorithm exploits a fact that relative rotation angle of odometer is invariant in camera coordinate system. Therefore, extrinsic calibration between camera and odometer is not required. The relative rotation angle from odometry reading and four feature point correspondences from camera are used for epipolar geometry estimation. We show that the proposed algorithm improves relative pose estimation compared with the well known 5-point algorithm. 
+We propose an algorithm to estimate relative camera pose using four feature correspondence and one relative rotation angle measurement. The algorithm can be used for relative pose estimation on a vehicle platform mounted with camera and a relative rotation angle sensor, either an odometer or an IMU. This algorithm exploits a fact that relative rotation angle of odometer is invariant under the rigid transform between camera and the rotation sensor. Therefore, extrinsic calibration between camera and sensor is not required. We show that the proposed algorithm improves relative pose estimation compared with the well known 5-point and 1-point algorithm. 
 \end{abstract}
 
 
 \section{Introduction}
-Vehicle platform mounted with camera and odometer has been widely used in research fields of computer vision, robotics and automatic control. For years research has be focused on using these economic sensors to locate the vehicle as well as reconstruct the environment. This research is also referred as Visual SLAM in Robotics. 
+Vehicle platform mounted with camera and either a odometer, IMU, or yaw rate sensor has been widely used in research fields of computer vision, robotics and automatic control. For years research has be focused on using these economic sensors to locate the vehicle as well as reconstruct the environment. This research is also referred as Visual SLAM in Robotics. 
 
-The key step of Visual SLAM is to estimate relative camera pose between frame pair. One commonly used method is to use a subset of image feature correspondences to estimate the Fundamental Matrix or Essential Matrix between two frames. Relative rotation and translation can then be extracted from the estimation result. A series of ``n-point'' (n-correspondences) algorithms are proposed for this aim. If the camera has with unknown intrinsics, the Fundamental Matrix can be estimated by 8-point [x] or 7-point [x] algorithm. If the camera has calibrated intrinsics, then 6-point [x] or 5-point [x] can be used to the Essential Matrix. Based on these algorithms, robust estimation methods like RANSAC or LMedS are used to generate best estimation from a set of points with both inliers and outliers. The result of ``n-point'' algorithm is significantly affected by the feature correspondences detected from images. It is well admitted that the algorithm using fewer points has lower estimation error. For calibrated camera, 5-point is the minimal case to solve the 5 DoF relative pose. In [x, x], 5-point algorithm shows the best estimation performance compared with 6, 7, 8-point algorithms. For Visual SLAM or Structure from Motion problem, 5-point algorithm is also the most commonly used algorithm. 
+The key step of Visual SLAM is to estimate relative camera pose between frame pair. One commonly used method is feature based estimation. A subset of image feature correspondences are selected to estimate the Fundamental Matrix or Essential Matrix between two frames. Relative rotation and translation can then be extracted from the estimation result. A series of ``n-point'' (n-correspondences) algorithms are proposed for this aim. If the camera has with unknown intrinsics, the Fundamental Matrix can be estimated by 8-point [x] or 7-point [x] algorithm. If the camera has calibrated intrinsics, then 6-point [x] or 5-point [x] can be used to the Essential Matrix. Based on these algorithms, robust estimation methods like RANSAC or LMedS are used to generate best estimation from a set of points with both inliers and outliers. The result of ``n-point'' algorithm is significantly affected by the feature correspondences detected from images. It is well admitted that the algorithm using fewer points has lower estimation error. For calibrated camera, 5-point is the minimal case to solve the 5 DoF relative pose. In [x, x], 5-point algorithm shows the best estimation performance compared with 6, 7, 8-point algorithms. For Visual SLAM or Structure from Motion problem, 5-point algorithm is also the most commonly used algorithm if the camera is calibrated. 
 
-However, stable estimation is still not always guaranteed for 5-point algorithm. On a vehicle with camera mounted in its front, relative pose estimation is especially a difficult case for 5-point algorithm. The difficulties include the following: 1) 5-point algorithm less stable in forward motion compared with sideway motion. 2) Features seen by a front camera are mainly far away from the vehicle, which also make the estimation unreliable. Discussion in [x] also shows that translation is more sensitive than rotation when estimation is affected. 
+However, stable estimation is still not always guaranteed for 5-point algorithm. On a vehicle with camera mounted in its front, relative pose estimation is especially a difficult case for 5-point algorithm. The difficulties include the following: 1) 5-point algorithm less stable in forward motion compared with sideway motion. 2) Features seen by a front camera are mainly far away from the vehicle, which also make the estimation unreliable. Readers can find some discussion about the performance of 5-point algorithm in [x, x]. To improve the estimation quality, research has been drawn on exploiting extra information from other sensors or from specific motion model. For example, [x] obtains two rotation angle from IMU and uses 3 point pairs to estimate the relative pose of a MAV. This method requires that the extrinsic calibration between camera and IMU is known. In [x], a very neat 1-point algorithm was proposed. The algorithm assumes that vehicle platform motion follows the General Ackermann steering model. The 1-point algorithm can work fast and stable for vehicle platform but requires that camera is well align on the rear axis of the vehicle. 
 
-In this paper, we propose a method to improve the relative pose estimation. We will show that rotation angle is invariant pose measure i.e. camera and odometer always have the same rotation angle. Therefore, this angle from odometer reading can be used for camera relative pose estimation. No extrinsic calibration between camera and odometer is required. With this information provided, the algorithm only requires 4 point pairs. Since odometer reading can be always very stable and accurate, the proposed can largely improve relative estimation compared with 5-point algorithm. 
+If the vehicle platform has an odometer and its extrinsic parameter is available, it is well known that camera relative pose can be directly obtained from odometer pose $H_o$ as $H^{-1} H_o H$, where $H$ is the transform between camera and odometer. However, in practice estimating $H$ is not easy. This problem is known as Hand-eye (or Head-eye) calibration [x]. Moreover, the success of these hand-eye calibration algorithms also requires accurate visual odometry estimation. This visual odometry estimation also requires pure features algorithm like 5, 6, 7, 8-point algorithms. 
 
-Note that if the extrinsic calibration between camera and odometer is available, camera relative pose can be directly obtained from odometer pose $H_o$ as $H^{-1} H_o H$, where $H$ is the transform between camera and odometer. However, in practice estimating $H$ is not easy. This problem is well-known as Hand-eye (or Head-eye) calibration [x]. Moreover, the success of these hand-eye calibration algorithms also requires accurate visual odometry estimation. This visual odometry estimation also requires 5-point or the proposed 4-point algorithm. 
+Similarly to [x, x], in this paper we propose a method to improve the relative pose estimation using extra information from odometer. In our algorithm, camera can be mounted anywhere on the platform and no extrinsic calibration is required. The algorithm uses 1 rotation angle from any relative rotation sensor including odometer, IMU, and 4 point pairs from camera. Since odometer reading can be much more stable and accurate, the proposed can largely improve relative estimation compared with existing methods. 
 
-The rest of the paper is organised as follows. Sec.\ref{Preliminaries} establishes notations and formulas used in the proposed methods. Sec.\ref{Algorithm} presents the form of 4-point relative pose problem and the algorithm to solve it. The performance of the algorithm is studied in Sec.\ref{}, where it is compared with the well known 5-point algorithm on both simulated cases and real dataset. 
+The rest of the paper is organised as follows. Sec.\ref{Preliminaries} establishes notations and formulas used in the proposed methods. Sec.\ref{Algorithm} presents the form of 4-point relative pose problem and the algorithm to solve it. The performance of the algorithm is studied in Sec.\ref{}, where it is compared with the well known 5-point algorithm on both simulated cases to explore how much the algorithm improves 5-point algorithm. Meanwhile, the algorithm is compared with 5-point and 1-point algorithm on a real dataset obtained from our vehicle platform mounted with camera and odometer. 
 
 \section{Preliminaries}
 \label{Preliminaries}
@@ -62,7 +66,7 @@ where $I$ is a $3 \times 3$ identity matrix.
 \textbf{Theorem}
 The rotation angle of camera and odometer is always the same. 
 
-This is a very well known fact for rigid motion. Detailed proof can be found in many textbooks on mechanics. This fact mean that without calibrating the extrinsic parameters between camera odometer, we can directly obtained the camera rotation angle by subtracting the yaw angle reading between the current and the previous frame. 
+This is a very well known fact for rigid motion. Detailed proof can be found in many textbooks on mechanics. This fact means that relative camera rotation is the same value measured by the relative rotation angle sensor. Note that this angle is the only invariant measurement from the sensor to camera. We do not know the rotation axis of a camera without extrinsic calibration, though in the world frame, it has the same direction with the rotation angle of the sensor. 
 
 
 \section{Algorithm}
@@ -87,7 +91,8 @@ Thus the equation system for solving relative pose can be form as follows.
 where $r = (r_x, r_y, r_z)^\top$ and $t = (t_x, t_y, t_z)^\top$ are six unknowns. 
 
 \subsection{Solution}
-Equation system (\ref{ProblemEquation1}) includes 4 polynomials with the highest monomial in the form of $t_\star r_\star r_\star$, where $\star$ denotes any arrangement of $x$, $y$, $z$. Eq.(\ref{ProblemEquation2}) and Eq.(\ref{ProblemEquation3}) are two quadratic polynomials. 
+\label{Solution}
+Equation system (\ref{ProblemEquation1}) includes 4 polynomials with the highest monomial in the form of $t_\star r_\star r_\star$, where $\star$ denotes any arrangement of `$x$', `$y$', `$z$'. Eq.(\ref{ProblemEquation2}) and Eq.(\ref{ProblemEquation3}) are two quadratic polynomials. 
 
 The degree and the number of equations for this equation system is very high  compared with other normal minimal solution problem. In our experiment, we attempted to reduce it using Resualtant Method in Maple. However, this attempt failed as it exceeded the PC memory capacity after one hour running. A working way to solve the system is to use Groebner basis. In our experiment, we use the automatic generator of Groebner solver developed by [x]. After possible simplification, the solver still required executing a Gauss-Jordan elimination on a $270 \times 290$ matrix. In this paper, we proposed a method to use Powell's Hybrid method [] to solve the above equation system. 
 
@@ -110,7 +115,7 @@ F(r_x, r_y, r_z) t \equiv \left(
 	\end{array}
 \right) = 0	
 \end{equation}
-Since we assume that $||t||^2 = 1$, the rank of $F$ must be $2$. This means that the determinant of all $3 \time 3$ submatrices must be 0. We form this as follows. 
+Since we assume that $||t||^2 = 1$, the rank of $F$ must be $2$. This means that the determinant of all $3 \times 3$ submatrices must be 0. We form this as follows. 
 \begin{eqnarray}
 \label{SimplifiedEquation1}
 \left| 
@@ -130,9 +135,45 @@ Since we assume that $||t||^2 = 1$, the rank of $F$ must be $2$. This means that
 \right| = 0 
 \end{eqnarray}
 
-Combining Eq.(\ref{SimplifiedEquation1}), Eq.(\ref{SimplifiedEquation2}) and Eq.(\ref{ProblemEquation3}), we have a new equation system on $r_x$, $r_y$, $r_z$. Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) are of 5 degree. Notice that Eq.(\ref{ProblemEquation3}) implies that $(r_x, r_y, r_z)^\top$ is on a unit sphere. We can parametrize it as 2D point and then use gradient descend method like Powell's Hybrid method to find a root from an initial point. In our experiment, we used $100$ initial points drawn by uniform sampling on a sphere. This setting could always result in a proper solution and fails very rarely. After $r_x$, $r_y$, $r_z$ are solved, $F$ is then obtained and $t$ can be solved as the nullvector of $F$. 
+Combining Eq.(\ref{SimplifiedEquation1}), Eq.(\ref{SimplifiedEquation2}) and Eq.(\ref{ProblemEquation3}), we have a new equation system on $r_x$, $r_y$, $r_z$. Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) are of 5 degree. Notice that Eq.(\ref{ProblemEquation3}) implies that $(r_x, r_y, r_z)^\top$ is on a unit sphere. We can parametrize it as 2D point and then use gradient descend method like Powell's Hybrid method to find a root from an initial guess. In our experiment, we used $100$ initial guesses drawn by uniform sampling on a unit sphere. This setting could always reaches a proper solution and fails very rarely. After $r_x$, $r_y$, $r_z$ are solved, $F$ is then obtained and $t$ can be solved as the nullvector of $F$. 
 
+For a set of correspondences detected from an image pair, methods like RANSAC or LMedS can be used to find the optimal estimation and remove outliers. 
 
+\section{Experiments}
+\subsection{Implementation details and timing issues}
+As mentioned in Sec.\ref{Solution}, we implemented the 4-point algorithm using Powell's Hybrid method from General Scientific Library (GSL). For each initial guess, the method reached a root or failed within 20 iterations. For the minimal case with four points, this implementation takes XXs on average. In our experiment on a Core i7 desktop, this is enough to process XX image frames per second. 
 
+The computational complexity can be further optimized. The calculation of coefficients in Eq.(\ref{SimplifiedEquation1}) and Eq.(\ref{SimplifiedEquation2}) involves a series extremely large polynomials generated by Maple, which is the computational bottleneck of the current implementation. The computation can be much accelerated by carefully rearrange the polynomial calculation. In addition, the Groebner based solver generated by [x] can also be accelerated with sparse matrix decomposition algorithm. 
+
+The improved implementation of our algorithm will be soon released as open source. 
+
+\subsection{Performance under noise}
+We use simulation data in this section to test the performance of the algorithm. For related algorithms including 8-point, 7-point, 6-point and 5-point algorithms, it is well admitted that 5-point algorithm outperforms the others for calibrated camera. Therefore, in this section we only compare our algorithm with 5-point algorithm. Detailed comparison between 8, 7, 6, 5-point algorithms can be found from [x, x]. 
+
+To make our experiment comparable with previous research, we kept our simulation setting close to the challenging condition in [x]. The setting is summarized in Table \ref{SettingTable} and Figure \ref{}. 
+\begin{table}
+\caption{Experiment setting for simulation data. }
+\begin{center}
+\begin{tabular}{|l|l|}
+	\hline	
+	Minimal Distance & 1 \\
+	\hline
+	Depth & 0.5 \\
+	\hline
+	Baseline & 0.1 \\
+	\hline
+	Image Size & $350 \times 350$ \\ 
+	\hline	
+	Field of View & 60 deg \\
+	\hline	
+	Error Measurement & Translation deviation angle \\ 
+	\hline	
+	Error Estimator & Quantile (minimal case) \\
+	& Mean (RANSAC case) \\
+	\hline	
+\end{tabular} 
+\end{center}
+\label{SettingTable}
+\end{table}
 
 \end{document}

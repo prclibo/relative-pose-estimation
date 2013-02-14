@@ -26,6 +26,6 @@ target_link_libraries( perf_test_forward five-point four-point ${OpenCV_LIBS} gs
 target_link_libraries( perf_test_forward2 five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
 target_link_libraries( perf_test_odonoise five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
 target_link_libraries( perf_test_odonoise2 five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_vcharge five-point four-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
+target_link_libraries( perf_test_vcharge five-point four-point one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
 
 target_link_libraries( test_1pt one-point ${OpenCV_LIBS})

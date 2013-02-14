@@ -35,10 +35,20 @@ int CvOnePointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _th
     x2 = q2->data.db[0]; 
     y2 = q2->data.db[1]; 
 
-    double theta = -2.0 * atan( (y2 - y1) / (x2 + x1) ); 
+    // Transform the coord to be consistent with Scaramuzza's paper. 
+    double x, y, z, x_, y_, z_; 
+    x = x_ = 1; 
+    y = -x1; y_ = -x2; 
+    z = -y1; z_ = y2; 
 
-    _theta->data.db[0] = theta; 
-    std::cout << theta << std::endl; 
+    double theta = -2.0 * atan( (y_ * z - z_ * y) / (x_ * z + z_ * x) ); 
+    if (theta > CV_PI / 2) theta -= CV_PI; 
+    if (theta < -CV_PI / 2) theta += CV_PI; 
+
+    // Back transform angle.
+    // This angle (-theta) is the vehicle turning angle in image coord system. 
+    // Note the rotation angle for image coord system should be theta. 
+    _theta->data.db[0] = -theta; 
  
     return 1 ; 
 }
@@ -58,8 +68,11 @@ void CvOnePointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
     X2.convertTo(X2, CV_64F); 
 
     double theta = model->data.db[0]; 
-    Mat E = (Mat_<double>(3, 3) << 0, 0, sin(theta / 2.0), 0, 0, cos(theta / 2.0), sin(theta / 2.0), -cos(theta / 2.0), 0); 
 
+    // Note this E is for image normal camera system, not the system in 1-pt paper
+    Mat E = (Mat_<double>(3, 3) << 0, -cos(theta * 0.5), 0, 
+                                   cos(theta * 0.5), 0, -sin(theta * 0.5), 
+                                   0, -sin(theta * 0.5), 0); 
     for (int i = 0; i < n; i++)
     {
         Mat x1 = (Mat_<double>(3, 1) << X1.at<double>(i, 0), X1.at<double>(i, 1), 1.0); 
@@ -73,6 +86,7 @@ void CvOnePointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
         double d = Etx2.at<double>(0) * Etx2.at<double>(0); 
 
         error->data.fl[i] = x2tEx1 * x2tEx1 / (a + b + c + d); 
+
     }
 
 }    
@@ -134,12 +148,16 @@ void findPose_1pt(cv::InputArray _points1, cv::InputArray _points2,
     }
 
 
-    _rvec.create(3, 1, CV_64F, -1, true); 
-    _tvec.create(3, 1, CV_64F, -1, true); 
+    _rvec.create(3, 2, CV_64F, -1, true); 
+    _tvec.create(3, 2, CV_64F, -1, true); 
 
     double t = theta.at<double>(0); 
-    Mat rvec = (Mat_<double>(3, 1) << 0, 0, t); 
-    Mat tvec = (Mat_<double>(3, 1) << -cos(t / 2.0), sin(t / 2.0), 0); 
+    Mat rvec = (Mat_<double>(3, 2) << 0, 0, 
+                                     -t, -t, 
+                                      0, 0); 
+    Mat tvec = (Mat_<double>(3, 2) << -sin(t / 2.0), sin(t / 2.0),
+                                                  0, 0, 
+                                       cos(t / 2.0), -cos(t / 2.0)); 
     
     rvec.copyTo(_rvec.getMat()); 
     tvec.copyTo(_tvec.getMat()); 
