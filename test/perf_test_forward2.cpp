@@ -5,12 +5,12 @@ using namespace cv;
 
 int main()
 {
-    double angle_bound = CV_PI / 1000; 
+    double angle_bound = CV_PI / 180; 
 
-    double nearest_dist = 5; 
-    double baseline_dev = 0.001; 
+    double nearest_dist = 10; 
+    double baseline_dev = 0.05; 
     double baseline = -1; 
-    double depth = 20; 
+    double depth = 10; 
 
     double focal = 300; 
     double bound_2d = 175; 
@@ -38,8 +38,7 @@ int main()
             rng.fill(cvec, RNG::UNIFORM, -baseline_dev, baseline_dev); 
             
             cvec.at<double>(2) = baseline;  
-
-            rvec *= fmod(norm(rvec), CV_PI) / norm(rvec); 
+            normalize(cvec, cvec); 
 
             Mat rmat; 
             Rodrigues(rvec, rmat); 
@@ -193,7 +192,7 @@ int main()
     std::cout << "t_err_5pt = t_err_5pt * 180 / pi; " << std::endl; 
     std::cout << "h = figure, " << std::endl; 
     std::cout << "plot(0:0.1:1, t_err_4pt, '-o'), hold on" << std::endl; 
-    std::cout << "plot(0:0.1:1, t_err_5pt, '-x'), hold on" << std::endl; 
+    std::cout << "plot(0:0.1:1, t_err_5pt, '-xr'), hold on" << std::endl; 
     std::cout << "legend('4-pt', '5-pt', 'Location', 'Northwest')" << std::endl; 
     std::cout << "set(h, 'Position', [0, 0, 300, 200])" << std::endl; ; 
     std::cout << "xlabel('Noise (px)')" << std::endl; 

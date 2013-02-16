@@ -1,8 +1,9 @@
 #ifndef ODOMETRY_H
 #define ODOMETRY_H
 
+#include <boost/shared_ptr.hpp>
 #include <Eigen/Dense>
-#include <opencv2/core/core.hpp>
+#include <stdint.h>
 
 namespace vcharge
 {
@@ -35,8 +36,8 @@ private:
 
 }; 
 
-typedef cv::Ptr<Odometer> OdometerPtr;
-typedef cv::Ptr<const Odometer> OdometerConstPtr;
+typedef boost::shared_ptr<Odometer> OdometerPtr;
+typedef boost::shared_ptr<const Odometer> OdometerConstPtr;
 
 }
 

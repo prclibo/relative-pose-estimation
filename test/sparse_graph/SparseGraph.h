@@ -16,11 +16,11 @@ namespace vcharge
 class Point2DFeature;
 class Point3DFeature;
 
-typedef cv::Ptr<Point2DFeature> Point2DFeaturePtr;
-typedef cv::Ptr<const Point2DFeature> Point2DFeatureConstPtr;
+typedef boost::shared_ptr<Point2DFeature> Point2DFeaturePtr;
+typedef boost::shared_ptr<const Point2DFeature> Point2DFeatureConstPtr;
 
-typedef cv::Ptr<Point3DFeature> Point3DFeaturePtr;
-typedef cv::Ptr<const Point3DFeature> Point3DFeatureConstPtr;
+typedef boost::shared_ptr<Point3DFeature> Point3DFeaturePtr;
+typedef boost::shared_ptr<const Point3DFeature> Point3DFeatureConstPtr;
 
 class Pose
 {
@@ -46,8 +46,8 @@ private:
     Eigen::Vector3d m_t;
 };
 
-typedef cv::Ptr<Pose> PosePtr;
-typedef cv::Ptr<const Pose> PoseConstPtr;
+typedef boost::shared_ptr<Pose> PosePtr;
+typedef boost::shared_ptr<const Pose> PoseConstPtr;
 
 class Frame
 {
@@ -83,8 +83,8 @@ private:
     cv::Mat mImage;
 };
 
-typedef cv::Ptr<Frame> FramePtr;
-typedef cv::Ptr<const Frame> FrameConstPtr;
+typedef boost::shared_ptr<Frame> FramePtr;
+typedef boost::shared_ptr<const Frame> FrameConstPtr;
 
 class Point2DFeature
 {
@@ -142,10 +142,10 @@ private:
 class Point2DFeatureLeft;
 class Point2DFeatureRight;
 
-typedef cv::Ptr<Point2DFeatureLeft> Point2DFeatureLeftPtr;
-typedef cv::Ptr<Point2DFeatureRight> Point2DFeatureRightPtr;
-typedef cv::Ptr<const Point2DFeatureLeft> Point2DFeatureLeftConstPtr;
-typedef cv::Ptr<const Point2DFeatureRight> Point2DFeatureRightConstPtr;
+typedef boost::shared_ptr<Point2DFeatureLeft> Point2DFeatureLeftPtr;
+typedef boost::shared_ptr<Point2DFeatureRight> Point2DFeatureRightPtr;
+typedef boost::shared_ptr<const Point2DFeatureLeft> Point2DFeatureLeftConstPtr;
+typedef boost::shared_ptr<const Point2DFeatureRight> Point2DFeatureRightConstPtr;
 
 class Point2DFeatureLeft: public Point2DFeature
 {
@@ -208,8 +208,16 @@ public:
      * XML file has the following structure:
      *
      * <root cameras_size=nCameras>
+     *   <camera0 segments_size=nSegments>
+     *     <segment0 frames_size>
+     *       <frames frame0=? frame1=? ...?
+     *       </frames>
+     *     </segment0>
+     *     ...
+     *   </camera0>
+     *   ...
      *   <frames size=nFrames>
-     *     <frame0 image=? id=? camera=pose? odometer=pose? features2D_size=? features3D_size=?>
+     *     <frame0 image=? id=? camera=pose? odometer=odometer? features2D_size=? features3D_size=?>
      *       <features2D features2D_0=F2D-? ...>
      *       </features2D>
      *       <features3D features3D_0=F3D-? ...>
@@ -247,53 +255,29 @@ public:
      *     </F3D-0>
      *     ...
      *   </features3D>
-     *   <camera0 segments_size=nSegments>
-     *     <segment0 frames_size>
-     *       <frames frame0=? frame1=? ...?
-     *       </frames>
-     *     </segment0>
-     *     ...
-     *   </camera0>
-     *   ...
      * </root>
      *
      */
 
     bool readFromFile(const std::string& filename);
-    void writeToFile(const std::string& filename) const;
+    void writeToFile(const std::string& filename, bool stream = false) const;
 
 private:
-    tinyxml2::XMLElement* frameToXML(FramePtr& frame, tinyxml2::XMLDocument& doc,
-                                     tinyxml2::XMLElement* parent,
-                                     boost::unordered_map<Frame*,size_t>& map,
-                                     boost::unordered_map<Frame*,tinyxml2::XMLElement*>& xmlMap,
-                                     const boost::filesystem::path& imageDir) const;
+    void writeToFileWithoutStream(const std::string& filename) const;
+    void writeToFileWithStream(const std::string& filename) const;
+
     void XMLToFrames(tinyxml2::XMLElement* parent, unsigned int count,
                      FrameSegment& map,
                      std::vector<tinyxml2::XMLElement*>& xmlMap,
                      const boost::filesystem::path& rootDir) const;
-    void point2DFeatureToXML(Point2DFeaturePtr& feature2D, tinyxml2::XMLDocument& doc,
-                             tinyxml2::XMLElement* parent,
-                             boost::unordered_map<const Point2DFeature*,size_t>& map,
-                             boost::unordered_map<const Point2DFeature*,tinyxml2::XMLElement*>& xmlMap) const;
     void XMLToPoint2DFeatures(tinyxml2::XMLElement* parent, unsigned int count,
                               std::vector<Point2DFeaturePtr>& map,
                               std::vector<tinyxml2::XMLElement*>& xmlMap) const;
-    void point3DFeatureToXML(Point3DFeaturePtr& feature3D, tinyxml2::XMLDocument& doc,
-                             tinyxml2::XMLElement* parent,
-                             boost::unordered_map<const Point3DFeature*,size_t>& map,
-                             boost::unordered_map<const Point3DFeature*,tinyxml2::XMLElement*>& xmlMap) const;
     void XMLToPoint3DFeatures(tinyxml2::XMLElement* parent, unsigned int count,
                               std::vector<Point3DFeaturePtr>& map,
                               std::vector<tinyxml2::XMLElement*>& xmlMap) const;
-    void poseToXML(PosePtr& pose, tinyxml2::XMLDocument& doc,
-                   tinyxml2::XMLElement* parent,
-                   boost::unordered_map<const Pose*,size_t>& map) const;
     void XMLToPoses(tinyxml2::XMLElement* parent, unsigned int count,
                     std::vector<PosePtr>& map) const;
-    void odometerToXML(OdometerPtr& odometer, tinyxml2::XMLDocument& doc,
-                       tinyxml2::XMLElement* parent,
-                       boost::unordered_map<const Odometer*,size_t>& map) const;
     void XMLToOdometers(tinyxml2::XMLElement* parent, unsigned int count,
                         std::vector<OdometerPtr>& map) const;
 

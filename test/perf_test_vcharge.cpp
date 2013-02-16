@@ -27,9 +27,8 @@ int main()
              0, 0, 0, 1; 
 
     SparseGraph sg; 
-//    sg.readFromFile("../../v-charge-data/data_rectified_1/frames.xml"); 
-    sg.readFromFile("../../v-charge-data/sparse_graph/frames.xml"); 
-//    sg.readFromFile("../../v-charge-data/data_new_new/frames.xml"); 
+//    sg.readFromFile("../../v-charge-data/sparse_graph/frames.xml"); 
+    sg.readFromFile("../../v-charge-data/long_graph/frames.xml"); 
 
     FrameSegment fs = sg.frameSegments(2).front(); 
 
@@ -37,7 +36,9 @@ int main()
     Mat pose_5pt = Mat::eye(4, 4, CV_64F); 
     Mat pose_1pt = Mat::eye(4, 4, CV_64F); 
 
-    for (int i = 1; i < fs.size(); i++)
+    int start = 0; 
+    int end = fs.size(); 
+    for (int i = start; i < end; i++)
     {
         Matrix4d H_o_prev = fs.at(i - 1)->odometer()->pose().inverse() * fs.at(0)->odometer()->pose(); 
         Matrix4d H_gt_prev = H_c2o.inverse() * H_o_prev * H_c2o; 
@@ -58,6 +59,13 @@ int main()
 
         Vector3d C_gt = H_gt.inverse().block<3, 1>(0, 3); 
 //        C_gt = H_o.inverse().block<3, 1>(0, 3); 
+        
+        if (i == start)
+        {
+            eigen2cv(H_gt, pose_4pt); 
+            eigen2cv(H_gt, pose_5pt); 
+            eigen2cv(H_gt, pose_1pt); 
+        }        
 
         double angle = fs.at(i)->odometer()->yaw() - fs.at(i - 1)->odometer()->yaw(); 
 
@@ -144,18 +152,21 @@ int main()
         Mat C_4pt = Mat(pose_4pt.inv())(Range(0, 3), Range(3, 4)) * 1.0; 
         Mat C_1pt = Mat(pose_1pt.inv())(Range(0, 3), Range(3, 4)) * 1.0; 
 
-        std::cout << "c_gt(" << i + 1 << ", :) = [" << C_gt.transpose() << "]; " << std::endl; 
-        std::cout << "c_4pt(" << i + 1 << ", :) = " << C_4pt.t() << "; " << std::endl; 
-        std::cout << "c_5pt(" << i + 1 << ", :) = " << C_5pt.t() << "; " << std::endl; 
-        std::cout << "c_1pt(" << i + 1 << ", :) = " << C_1pt.t() << "; " << std::endl; 
+        std::cout << "c_gt(" << i + 1 - start << ", :) = [" << C_gt.transpose() << "]; " << std::endl; 
+        std::cout << "c_4pt(" << i + 1 - start << ", :) = " << C_4pt.t() << "; " << std::endl; 
+        std::cout << "c_5pt(" << i + 1 - start << ", :) = " << C_5pt.t() << "; " << std::endl; 
+        std::cout << "c_1pt(" << i + 1 - start << ", :) = " << C_1pt.t() << "; " << std::endl; 
     }
     std::cout << "h = figure; " << std::endl; 
-    std::cout << "plot(c_gt(:, 3), c_gt(:, 1), '-g', 'linewidth', 3, 'markersize', 2), hold on" << std::endl; 
-    std::cout << "plot(c_1pt(:, 3), c_1pt(:, 1), 'xk', 'markersize', 6), hold on" << std::endl; 
-    std::cout << "plot(c_4pt(:, 3), c_4pt(:, 1), '.b', 'markersize', 12), hold on" << std::endl; 
-    std::cout << "plot(c_5pt(:, 3), c_5pt(:, 1), '+r', 'markersize', 5), hold on" << std::endl; 
+    std::cout << "plot(c_gt(:, 3), c_gt(:, 1), '-', 'color', [1, 1, 1] * 0.7, 'linewidth', 10, 'markersize', 2), hold on" << std::endl; 
+    std::cout << "plot(c_1pt(:, 3), c_1pt(:, 1), '-.g', 'linewidth', 3, 'markersize', 2), hold on" << std::endl; 
+    std::cout << "plot(c_4pt(:, 3), c_4pt(:, 1), '-b', 'linewidth', 3, 'markersize', 2), hold on" << std::endl; 
+    std::cout << "plot(c_5pt(:, 3), c_5pt(:, 1), '--r', 'linewidth', 3, 'markersize', 2), hold on" << std::endl; 
     std::cout << "axis equal" << std::endl; 
     std::cout << "set(h, 'Position', [0, 0, 550, 400])" << std::endl; 
-    std::cout << "legend('Odo', '1', '4', '5', 'Location', 'Northwest')" << std::endl; 
+    std::cout << "legend('Groundtruth', '1-pt', '4-pt', '5-pt', 'Location', 'Northwest')" << std::endl; 
+    std::cout << "text(c_gt(1, 3) - 1.5, c_gt(1, 1) -0.5, 'Start point')" << std::endl; 
+    std::cout << "xlabel('(m)')" << std::endl; 
+    std::cout << "ylabel('(m)')" << std::endl; 
 }
 

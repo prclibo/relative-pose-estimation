@@ -7,12 +7,12 @@ using namespace cv;
 
 int main()
 {
-    double angle_bound = CV_PI / 9; 
+    double angle_bound = CV_PI / 18; 
 
     double nearest_dist = 10; 
     double baseline_dev = 0.001; 
-    double baseline = -1; 
-    double depth = 5; 
+    double baseline = 1; 
+    double depth = 10; 
 
     double focal = 300; 
     double bound_2d = 175; 
@@ -24,7 +24,7 @@ int main()
     std::cout << "h = figure, hold on" << std::endl; 
 
 //    for (double odo_sigma = 0; odo_sigma < M_PI / 180 * 3; odo_sigma += M_PI / 180 * 0.5)
-    for (double odo_sigma = 0; odo_sigma < 0.1; odo_sigma += 0.02)
+    for (double odo_sigma = 0; odo_sigma <= 0.06; odo_sigma += 0.02)
     {
     
         vector<vector<double> > t_angle_4pt, t_angle_5pt;     
@@ -40,7 +40,7 @@ int main()
             std::cout << "px_sigma(end + 1) = " << px_sigma << "; " << std::endl; 
             t_angle_4pt.push_back(vector<double>());         
             t_angle_5pt.push_back(vector<double>());         
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 200; i++)
             {    
                 Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F), cvec(3, 1, CV_64F); 
                 rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
@@ -186,12 +186,12 @@ int main()
         }
     
         std::cout << "t_err_4pt = t_err_4pt * 180 / pi; " << std::endl; 
-        std::cout << "h_4pt = plot(0:0.1:1, t_err_4pt, '-o'); hold on" << std::endl; 
+        std::cout << "h_4pt = plot(0:0.1:1, t_err_4pt, '-o', 'linewidth', 3, " << "'color', [" << odo_sigma * 10 << ", " << odo_sigma * 1.0 << ", 1])" << std::endl; ; hold on" << std::endl; 
         std::cout << std::setprecision(1) << "text(1.02, t_err_4pt(end), '\\sigma_{o}=" << odo_sigma << "')" << std::endl; 
         std::cout << std::setprecision(6); 
     }
     std::cout << "t_err_5pt = t_err_5pt * 180 / pi; " << std::endl; 
-    std::cout << "h_5pt = plot(0:0.1:1, t_err_5pt, '-x', 'markersize', 12, 'linewidth', 2); hold on" << std::endl; 
+    std::cout << "h_5pt = plot(0:0.1:1, t_err_5pt, '-xr', 'markersize', 12, 'linewidth', 4); hold on" << std::endl; 
     std::cout << "legend([h_4pt, h_5pt], '4-pt w/ varying odo noise', '5-pt', 'Location', 'Northwest')" << std::endl; 
     std::cout << "xlabel('Noise (px)')" << std::endl; 
     std::cout << "ylabel('Translation error (deg)')" << std::endl; 
