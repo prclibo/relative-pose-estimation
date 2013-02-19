@@ -1,5 +1,3 @@
-#include "four-point.hpp"
-
 
 void four_point_get_M(double k1, double k2, double k3, double x1[4], double y1[4], double x2[4], double y2[4], double rx, double ry, double rz, double M[12])
 {

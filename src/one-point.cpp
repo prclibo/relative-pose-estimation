@@ -91,7 +91,7 @@ void CvOnePointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
 
 }    
 
-void findPose_1pt(cv::InputArray _points1, cv::InputArray _points2, 
+void findPose1pt(cv::InputArray _points1, cv::InputArray _points2, 
               double focal, cv::Point2d pp, 
               cv::OutputArray _rvec, cv::OutputArray _tvec, 
               int method, double prob, double threshold, OutputArray _mask) 

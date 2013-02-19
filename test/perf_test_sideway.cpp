@@ -1,5 +1,5 @@
 #include <algorithm>
-#include "four-point.hpp"
+#include "four-point-numerical.hpp"
 #include "five-point.hpp"
 
 using namespace cv; 
@@ -90,8 +90,8 @@ int main()
 //            exit(0); 
         
             std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
-            four_point(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
-            four_point(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
+            four_point_numerical(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
+            four_point_numerical(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
     
             tvec /= norm(tvec); 
             

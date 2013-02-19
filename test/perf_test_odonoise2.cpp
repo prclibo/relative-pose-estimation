@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <iomanip>
-#include "four-point.hpp"
+#include "four-point-numerical.hpp"
 #include "five-point.hpp"
 
 using namespace cv; 
@@ -97,7 +97,7 @@ int main()
                 double angle = norm(rvec) * (1.0 + rng.gaussian(odo_sigma)); 
     
                 std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
-                findPose_4pt(x1s_noise, x2s_noise, angle, focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
+                findPose4pt_numerical(x1s_noise, x2s_noise, angle, focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
         
                 tvec /= norm(tvec); 
                 
@@ -186,7 +186,7 @@ int main()
         }
     
         std::cout << "t_err_4pt = t_err_4pt * 180 / pi; " << std::endl; 
-        std::cout << "h_4pt = plot(0:0.1:1, t_err_4pt, '-o', 'linewidth', 3, " << "'color', [" << odo_sigma * 10 << ", " << odo_sigma * 1.0 << ", 1])" << std::endl; ; hold on" << std::endl; 
+        std::cout << "h_4pt = plot(0:0.1:1, t_err_4pt, '-o', 'linewidth', 3, " << "'color', [" << odo_sigma * 10 << ", " << odo_sigma * 1.0 << ", 1])" << "; hold on" << std::endl; 
         std::cout << std::setprecision(1) << "text(1.02, t_err_4pt(end), '\\sigma_{o}=" << odo_sigma << "')" << std::endl; 
         std::cout << std::setprecision(6); 
     }

@@ -1,7 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multiroots.h>
-#include "four-point.hpp"
+#include "four-point-numerical.hpp"
+#include "four-point-numerical-helper.hpp"
 #include "_modelest.h"
 
 using namespace cv; 
@@ -193,7 +194,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 }
 
 
-void four_point(cv::InputArray _points1, cv::InputArray _points2, 
+void four_point_numerical(cv::InputArray _points1, cv::InputArray _points2, 
                 double angle, double focal, cv::Point2d pp, 
                 cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs)
 {
@@ -296,7 +297,7 @@ int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _r
 	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
 
     std::vector<Mat> rvecs, tvecs; 
-    four_point(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
+    four_point_numerical(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
     double * rt = _rvec_tvec->data.db; 
 
     for (int i = 0; i < rvecs.size(); i++)
@@ -353,7 +354,7 @@ void CvFourPointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
 }    
 
 
-void findPose_4pt(cv::InputArray _points1, cv::InputArray _points2, 
+void findPose4pt_numerical(cv::InputArray _points1, cv::InputArray _points2, 
               double angle, double focal, cv::Point2d pp, 
               cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs, 
               int method, double prob, double threshold, OutputArray _mask) 
@@ -396,7 +397,7 @@ void findPose_4pt(cv::InputArray _points1, cv::InputArray _points2,
     int count = 1; 
     if (npoints == 4)
     {
-        four_point(_points1, _points2, angle, focal, pp, _rvecs, _tvecs); 
+        four_point_numerical(_points1, _points2, angle, focal, pp, _rvecs, _tvecs); 
         Mat(tempMask).setTo(true); 
     }
     else 

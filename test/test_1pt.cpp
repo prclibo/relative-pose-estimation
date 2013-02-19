@@ -46,7 +46,7 @@ int main()
             Mat x2s_noise = x2s + noise2; 
     
     Mat rres, tres; 
-    findPose_1pt(x1s_noise, x2s_noise, focal, Point2d(0, 0), rres, tres, CV_RANSAC, 0.99, 1, noArray()); 
+    findPose1pt(x1s_noise, x2s_noise, focal, Point2d(0, 0), rres, tres, CV_RANSAC, 0.99, 1, noArray()); 
     std::cout << tres << std::endl; 
     
 

@@ -8,7 +8,6 @@ add_executable( perf_test_forward perf_test_forward.cpp )
 
 add_executable( perf_test_forward2 perf_test_forward2.cpp ) 
 
-add_executable( perf_test_odonoise perf_test_odonoise.cpp ) 
 
 add_executable( perf_test_odonoise2 perf_test_odonoise2.cpp ) 
 
@@ -20,12 +19,15 @@ add_executable( perf_test_vcharge
 add_executable( test_1pt
                 test_1pt.cpp) 
 
-target_link_libraries( perf_test_sideway five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_sideway2 five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_forward five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_forward2 five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_odonoise five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_odonoise2 five-point four-point ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_vcharge five-point four-point one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
+add_executable( test_4pt_groebner
+                test_4pt_groebner.cpp )
+
+target_link_libraries( perf_test_sideway five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_sideway2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_forward five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_forward2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_odonoise2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_vcharge five-point four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
 
 target_link_libraries( test_1pt one-point ${OpenCV_LIBS})
+target_link_libraries( test_4pt_groebner four-point-groebner ${OpenCV_LIBS})

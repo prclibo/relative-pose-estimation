@@ -3,7 +3,7 @@
 #include <opencv2/core/eigen.hpp>
 
 #include "five-point.hpp"
-#include "four-point.hpp"
+#include "four-point-numerical.hpp"
 #include "one-point.hpp"
 
 #include "sparse_graph/SparseGraph.h"
@@ -105,7 +105,7 @@ int main()
         
         /*******************************************************/
         std::vector<Mat> rvecs_4pt, tvecs_4pt; 
-        findPose_4pt(points1, points2, angle, 300, Point2d(640, 400), rvecs_4pt, tvecs_4pt, CV_RANSAC, 0.99, 1, mask); 
+        findPose4pt_numerical(points1, points2, angle, 300, Point2d(640, 400), rvecs_4pt, tvecs_4pt, CV_RANSAC, 0.99, 1, mask); 
 //        std::cout << countNonZero(mask) << " / " << mask.total() << "   "; 
         Mat R_4pt, t_4pt; 
         Rodrigues(rvecs_4pt.front(), R_4pt); 
@@ -117,7 +117,7 @@ int main()
 
         /*******************************************************/
         Mat rvecs_1pt, tvecs_1pt; 
-        findPose_1pt(points1, points2, 300, Point2d(640, 400), rvecs_1pt, tvecs_1pt, CV_RANSAC, 0.99, 3, mask); 
+        findPose1pt(points1, points2, 300, Point2d(640, 400), rvecs_1pt, tvecs_1pt, CV_RANSAC, 0.99, 3, mask); 
         Mat R_1pt, t_1pt; 
         Rodrigues(rvecs_1pt.col(0), R_1pt); 
         if (norm(tvecs_1pt.col(0), t_gt_cv) < norm(tvecs_1pt.col(1), t_gt_cv))
