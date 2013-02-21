@@ -14,7 +14,12 @@ add_executable( perf_test_odonoise2 perf_test_odonoise2.cpp )
 add_executable( perf_test_vcharge 
                 perf_test_vcharge.cpp 
                 sparse_graph/SparseGraph.cc sparse_graph/Odometer.cc 
-                sparse_graph/tinyxml2/tinyxml2.cpp ) 
+                sparse_graph/pugixml/pugixml.cpp ) 
+
+add_executable( perf_test_vcharge2 
+                perf_test_vcharge2.cpp 
+                sparse_graph/SparseGraph.cc sparse_graph/Odometer.cc 
+                sparse_graph/pugixml/pugixml.cpp ) 
 
 add_executable( perf_test_timing perf_test_timing.cpp ) 
 
@@ -30,6 +35,7 @@ target_link_libraries( perf_test_forward five-point four-point-numerical ${OpenC
 target_link_libraries( perf_test_forward2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
 target_link_libraries( perf_test_odonoise2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
 target_link_libraries( perf_test_vcharge five-point four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
+target_link_libraries( perf_test_vcharge2 five-point four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
 target_link_libraries( perf_test_timing five-point four-point-numerical four-point-groebner
     ${OpenCV_LIBS} 
     ${CHOLMOD_LIBRARIES} 

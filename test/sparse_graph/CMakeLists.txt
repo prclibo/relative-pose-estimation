@@ -8,5 +8,5 @@ vcharge_link_libraries(sparse_graph
   ${Boost_SYSTEM_LIBRARY}
   ${OPENCV_CORE_LIBRARY}
   ${OPENCV_HIGHGUI_LIBRARY}
-  tinyxml2
+  pugixml
 )

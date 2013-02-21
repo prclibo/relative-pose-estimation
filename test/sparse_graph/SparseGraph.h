@@ -7,8 +7,13 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-#include "tinyxml2/tinyxml2.h"
 #include "Odometer.h"
+
+// forward declarations
+namespace pugi
+{
+class xml_node;
+}
 
 namespace vcharge
 {
@@ -29,6 +34,9 @@ public:
 
     Pose();
 
+    uint64_t& timeStamp(void);
+    uint64_t timeStamp(void) const;
+
     Eigen::Quaterniond& rotation(void);
     const Eigen::Quaterniond& rotation(void) const;
     double* rotationData(void);
@@ -42,6 +50,7 @@ public:
     Eigen::Matrix4d pose(void) const;
 
 private:
+    uint64_t mTimeStamp;
     Eigen::Quaterniond m_q;
     Eigen::Vector3d m_t;
 };
@@ -60,6 +69,9 @@ public:
     OdometerPtr& odometer(void);
     OdometerConstPtr odometer(void) const;
 
+    PosePtr& gps_ins(void);
+    PoseConstPtr gps_ins(void) const;
+
     std::vector<Point2DFeaturePtr>& features2D(void);
     const std::vector<Point2DFeaturePtr>& features2D(void) const;
 
@@ -75,6 +87,7 @@ public:
 private:
     PosePtr mCamera;
     OdometerPtr mOdometer;
+    PosePtr mGpsIns;
 
     std::vector<Point2DFeaturePtr> mFeatures2D;
     std::vector<Point3DFeaturePtr> mFeatures3D;
@@ -217,7 +230,7 @@ public:
      *   </camera0>
      *   ...
      *   <frames size=nFrames>
-     *     <frame0 image=? id=? camera=pose? odometer=odometer? features2D_size=? features3D_size=?>
+     *     <frame0 image=? id=? camera=pose? odometer=odometer? gps_ins=pose? features2D_size=? features3D_size=?>
      *       <features2D features2D_0=F2D-? ...>
      *       </features2D>
      *       <features3D features3D_0=F3D-? ...>
@@ -260,25 +273,22 @@ public:
      */
 
     bool readFromFile(const std::string& filename);
-    void writeToFile(const std::string& filename, bool stream = false) const;
+    void writeToFile(const std::string& filename) const;
 
 private:
-    void writeToFileWithoutStream(const std::string& filename) const;
-    void writeToFileWithStream(const std::string& filename) const;
-
-    void XMLToFrames(tinyxml2::XMLElement* parent, unsigned int count,
+    void XMLToFrames(pugi::xml_node& parent, unsigned int count,
                      FrameSegment& map,
-                     std::vector<tinyxml2::XMLElement*>& xmlMap,
+                     std::vector<pugi::xml_node>& xmlMap,
                      const boost::filesystem::path& rootDir) const;
-    void XMLToPoint2DFeatures(tinyxml2::XMLElement* parent, unsigned int count,
+    void XMLToPoint2DFeatures(pugi::xml_node& parent, unsigned int count,
                               std::vector<Point2DFeaturePtr>& map,
-                              std::vector<tinyxml2::XMLElement*>& xmlMap) const;
-    void XMLToPoint3DFeatures(tinyxml2::XMLElement* parent, unsigned int count,
+                              std::vector<pugi::xml_node>& xmlMap) const;
+    void XMLToPoint3DFeatures(pugi::xml_node& parent, unsigned int count,
                               std::vector<Point3DFeaturePtr>& map,
-                              std::vector<tinyxml2::XMLElement*>& xmlMap) const;
-    void XMLToPoses(tinyxml2::XMLElement* parent, unsigned int count,
+                              std::vector<pugi::xml_node>& xmlMap) const;
+    void XMLToPoses(pugi::xml_node& parent, unsigned int count,
                     std::vector<PosePtr>& map) const;
-    void XMLToOdometers(tinyxml2::XMLElement* parent, unsigned int count,
+    void XMLToOdometers(pugi::xml_node& parent, unsigned int count,
                         std::vector<OdometerPtr>& map) const;
 
     std::vector<std::vector<FrameSegment> > mFrameSegments;

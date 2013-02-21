@@ -16,28 +16,28 @@ using namespace Eigen;
 int main()
 {
     Matrix4d H_c2o;  
-/*    H_c2o << 0.0154394200723,  0.0875650715775,  0.996039147096,  3.42017159758, 
+    H_c2o << 0.0154394200723,  0.0875650715775,  0.996039147096,  3.42017159758, 
              -0.999856042858,  0.00836277405312,  0.0147633861499, 0.000534201531086, 
              -0.00703689337029,  -0.996123698267,  0.0876815823416,  0.595195403879, 
-             0, 0, 0, 1;     */
+             0, 0, 0, 1;     
 
-    H_c2o << -0.00500840299895, 0.0378467295602, -0.999271004763, -0.681157732097, 
+/*    H_c2o << -0.00500840299895, 0.0378467295602, -0.999271004763, -0.681157732097, 
              0.999948809397, 0.00897508613295, -0.00467187473256, 0.00148734407173, 
              0.00879172815837, -0.99924325011, -0.0378897430116, 0.788190622883, 
-             0, 0, 0, 1; 
+             0, 0, 0, 1; */
 
     SparseGraph sg; 
 //    sg.readFromFile("../../v-charge-data/sparse_graph/frames.xml"); 
-    sg.readFromFile("../../v-charge-data/long_graph/frames.xml"); 
+    sg.readFromFile("../../v-charge-data/loopy/frames.xml"); 
 
-    FrameSegment fs = sg.frameSegments(2).front(); 
+    FrameSegment fs = sg.frameSegments(0).front(); 
 
     Mat pose_4pt = Mat::eye(4, 4, CV_64F); 
     Mat pose_5pt = Mat::eye(4, 4, CV_64F); 
     Mat pose_1pt = Mat::eye(4, 4, CV_64F); 
 
-    int start = 0; 
-    int end = fs.size(); 
+    int start = 15; 
+    int end = fs.size() - 15; 
     for (int i = start; i < end; i++)
     {
         Matrix4d H_o_prev = fs.at(i - 1)->odometer()->pose().inverse() * fs.at(0)->odometer()->pose(); 
@@ -77,9 +77,9 @@ int main()
         for (int j = 0; j < features.size(); j++)
         {
             const Point2DFeatureConstPtr & pt = features.at(j); 
-            if (pt->prevMatches().empty() || pt->bestPrevMatchIdx() < 0) continue; 
+            if (pt->prevMatches().empty()) continue; 
 
-            const Point2DFeatureConstPtr & ptPrev = pt->prevMatch(); 
+            const Point2DFeatureConstPtr & ptPrev = pt->prevMatches().at(0); 
 
             points1.push_back(ptPrev->keypoint().pt); 
             points2.push_back(pt->keypoint().pt); 
@@ -113,7 +113,6 @@ int main()
             t_4pt = -tvecs_4pt.front() * 1.0; 
         else
             t_4pt = tvecs_4pt.front() * 1.0; 
-
 
         /*******************************************************/
         Mat rvecs_1pt, tvecs_1pt; 
