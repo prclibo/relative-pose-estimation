@@ -23,5 +23,9 @@ target_link_libraries(four-point-groebner
     ${AMD_LIBRARY} 
     ${COLAMD_LIBRARY} 
     ${SPQR_LIBRARIES}
+    lapack
+    csparse
+    cxsparse  
+    cholmod
     blas
-    lapack)
+    spqr)
