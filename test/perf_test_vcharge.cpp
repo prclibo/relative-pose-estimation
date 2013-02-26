@@ -68,6 +68,8 @@ int main()
         }        
 
         double angle = fs.at(i)->odometer()->yaw() - fs.at(i - 1)->odometer()->yaw(); 
+        std::cout << fs.at(i)->odometer()->yaw()  << " - " <<  fs.at(i - 1)->odometer()->yaw() << " = " << angle << std::endl; ; 
+        continue; 
 
         double length = t_gt.norm(); 
 

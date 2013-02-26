@@ -13,6 +13,7 @@
 *.a
 
 *build/
+*debug/
 *.swp
 *.bak
 *.sav

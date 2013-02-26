@@ -5,6 +5,7 @@
 #include "five-point.hpp"
 #include "four-point-numerical.hpp"
 #include "one-point.hpp"
+#include "selectPose.hpp"
 
 #include "sparse_graph/SparseGraph.h"
 #include "sparse_graph/Odometer.h"
@@ -37,6 +38,7 @@ int main()
 
     SparseGraph sg; 
     sg.readFromFile("../../v-charge-data/long_loop/frames.xml"); 
+//    sg.readFromFile("../../v-charge-data/more_loop/frames.xml"); 
 
 
     int ci = 0; 
@@ -66,13 +68,18 @@ int main()
                 pose_gps_prev = sg.frameSegments(ci).at(s - 1).back()->gps_ins()->pose();  
                 pose_odo_prev = sg.frameSegments(ci).at(s - 1).back()->odometer()->pose(); 
                 angle_odo = fs.at(i)->odometer()->yaw() - sg.frameSegments(ci).at(s - 1).back()->odometer()->yaw(); 
+                std::cout << fs.at(i)->odometer()->yaw() << " - " << sg.frameSegments(ci).at(s - 1).back()->odometer()->yaw(); 
+//                std::cout << "=" << angle_odo << std::endl; 
             }
             else
             {
                 pose_gps_prev = fs.at(i - 1)->gps_ins()->pose();  
                 pose_odo_prev = fs.at(i - 1)->odometer()->pose(); 
                 angle_odo = fs.at(i)->odometer()->yaw() - fs.at(i - 1)->odometer()->yaw(); 
-            }
+                std::cout << fs.at(i)->odometer()->yaw() << " - " << fs.at(i - 1)->odometer()->yaw(); 
+//                std::cout << "=" << angle_odo << std::endl; 
+            } 
+//            continue; 
 
             Matrix4d pose_gps_init = fs0.at(0)->gps_ins()->pose(); 
             Matrix4d pose_odo_init = fs0.at(0)->odometer()->pose();             
@@ -137,6 +144,7 @@ int main()
                 points2.push_back(pt->keypoint().pt); 
             }
     
+            int select; 
             /*******************************************************/
             Mat mask; 
             Mat E_5pt = findEssentialMat(points1, points2, 300, Point2d(640, 400), CV_RANSAC, 0.999, 1, mask); 
@@ -147,6 +155,17 @@ int main()
             Mat r1_5pt, r2_5pt; 
             Rodrigues(R1_5pt, r1_5pt); 
             Rodrigues(R2_5pt, r2_5pt); 
+
+/*            Mat rvec_5pt(3, 4, CV_64F), tvec_5pt(3, 4, CV_64F); 
+            rvec_5pt.col(0) = r1_5pt * 1.0; 
+            rvec_5pt.col(1) = r1_5pt * 1.0; 
+            rvec_5pt.col(2) = r2_5pt * 1.0; 
+            rvec_5pt.col(3) = r2_5pt * 1.0; 
+
+            tvec_5pt.col(0) = t_5pt * 1.0; 
+            tvec_5pt.col(1) = -t_5pt * 1.0; 
+            tvec_5pt.col(2) = t_5pt * 1.0; 
+            tvec_5pt.col(3) = -t_5pt * 1.0; */
     
             Mat R_5pt; 
             if (norm(R1_5pt, R_cfg_cv) < norm(R2_5pt, R_cfg_cv)) R_5pt = R1_5pt * 1.0; 
@@ -154,39 +173,59 @@ int main()
     
             if (norm(-t_5pt, t_cfg_cv) < norm(t_5pt, t_cfg_cv)) t_5pt = -t_5pt; 
     
+/*            select = selectPose(points1, points2, 300, Point2d(640, 400), rvec_5pt, tvec_5pt); 
+            t_5pt = tvec_5pt.col(select) * 1.0; 
+            R_5pt = select > 1 ? R2_5pt * 1.0 : R1_5pt * 1.0; */
             
             /*******************************************************/
-            std::vector<Mat> rvecs_4pt_odo, tvecs_4pt_odo; 
+            Mat rvecs_4pt_odo, tvecs_4pt_odo; 
             findPose4pt_numerical(points1, points2, angle_odo, 300, Point2d(640, 400), rvecs_4pt_odo, tvecs_4pt_odo, CV_RANSAC, 0.99, 1, mask); 
+            std::cout << angle_odo << std::endl; 
     //        std::cout << countNonZero(mask) << " / " << mask.total() << "   "; 
             Mat R_4pt_odo, t_4pt_odo; 
-            if (angle_odo * rvecs_4pt_odo.front().at<double>(1) > 0)
-                Rodrigues(rvecs_4pt_odo.front(), R_4pt_odo); 
+            if (angle_odo * rvecs_4pt_odo.at<double>(1, 0) > 0)
+            {
+//                std::cout << "refer = " << rvecs_4pt_odo.col(0) << std::endl; 
+//                std::cout << "real = " << rvecs_4pt_odo.col(0) << std::endl; 
+                Rodrigues(rvecs_4pt_odo.col(0), R_4pt_odo); 
+            }
             else 
-                Rodrigues(-rvecs_4pt_odo.front(), R_4pt_odo); 
+            {
+//                std::cout << "refer = " << -rvecs_4pt_odo.col(0) << std::endl; 
+//                std::cout << "real = " << rvecs_4pt_odo.col(0) << std::endl; 
+                Rodrigues(-rvecs_4pt_odo.col(0), R_4pt_odo); 
+            }
             
 
-            if (norm(-tvecs_4pt_odo.front(), t_cfg_cv) < norm(tvecs_4pt_odo.front(), t_cfg_cv))
-                t_4pt_odo = -tvecs_4pt_odo.front() * 1.0; 
+            if (norm(-tvecs_4pt_odo.col(0), t_cfg_cv) < norm(tvecs_4pt_odo.col(0), t_cfg_cv))
+                t_4pt_odo = -tvecs_4pt_odo.col(0) * 1.0; 
             else
-                t_4pt_odo = tvecs_4pt_odo.front() * 1.0; 
+                t_4pt_odo = tvecs_4pt_odo.col(0) * 1.0; 
+
+/*            select = selectPose(points1, points2, 300, Point2d(640, 400), rvecs_4pt_odo, tvecs_4pt_odo, mask); 
+            t_4pt_odo = tvecs_4pt_odo.col(select) * 1.0;
+            Rodrigues(rvecs_4pt_odo.col(select), R_4pt_odo); 
+            std::cout << "est = " << rvecs_4pt_odo.col(select) << std::endl; */
     
             /*******************************************************/
-            std::vector<Mat> rvecs_4pt_gps, tvecs_4pt_gps; 
+            Mat rvecs_4pt_gps, tvecs_4pt_gps; 
             findPose4pt_numerical(points1, points2, angle_gps, 300, Point2d(640, 400), rvecs_4pt_gps, tvecs_4pt_gps, CV_RANSAC, 0.99, 1, mask); 
     //        std::cout << countNonZero(mask) << " / " << mask.total() << "   "; 
             Mat R_4pt_gps, t_4pt_gps; 
-            if (angle_gps * rvecs_4pt_gps.front().at<double>(1) > 0)
-                Rodrigues(rvecs_4pt_gps.front(), R_4pt_gps); 
+            if (1 || angle_gps * rvecs_4pt_odo.at<double>(1, 0) > 0)
+                Rodrigues(rvecs_4pt_gps.col(0), R_4pt_gps); 
             else 
-                Rodrigues(-rvecs_4pt_gps.front(), R_4pt_gps); 
+                Rodrigues(-rvecs_4pt_gps.col(0), R_4pt_gps); 
             
 
-            if (norm(-tvecs_4pt_gps.front(), t_cfg_cv) < norm(tvecs_4pt_gps.front(), t_cfg_cv))
-                t_4pt_gps = -tvecs_4pt_gps.front() * 1.0; 
+            if (norm(-tvecs_4pt_gps.col(0), t_cfg_cv) < norm(tvecs_4pt_gps.col(0), t_cfg_cv))
+                t_4pt_gps = -tvecs_4pt_gps.col(0) * 1.0; 
             else
-                t_4pt_gps = tvecs_4pt_gps.front() * 1.0; 
+                t_4pt_gps = tvecs_4pt_gps.col(0) * 1.0; 
     
+/*            select = selectPose(points1, points2, 300, Point2d(640, 400), rvecs_4pt_gps, tvecs_4pt_gps); 
+            t_4pt_gps = tvecs_4pt_gps.col(select) * 1.0;
+            Rodrigues(rvecs_4pt_gps.col(select), R_4pt_gps); */
             /*******************************************************/
             Mat rvecs_1pt, tvecs_1pt; 
             findPose1pt(points1, points2, 300, Point2d(640, 400), rvecs_1pt, tvecs_1pt, CV_RANSAC, 0.99, 3, mask); 

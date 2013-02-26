@@ -196,7 +196,7 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
 
 void four_point_numerical(cv::InputArray _points1, cv::InputArray _points2, 
                 double angle, double focal, cv::Point2d pp, 
-                cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs)
+                cv::OutputArray _rvecs, cv::OutputArray _tvecs)
 {
     Mat points1, points2; 
 	_points1.getMat().copyTo(points1); 
@@ -240,31 +240,39 @@ void four_point_numerical(cv::InputArray _points1, cv::InputArray _points2,
     
        
     int n = rx.size(); 
-    _rvecs.create(n * 2, 1, CV_64FC3); 
-    _tvecs.create(n * 2, 1, CV_64FC3); 
+    _rvecs.create(3, n * 2, CV_64F, -1, true); 
+    _tvecs.create(3, n * 2, CV_64F, -1, true); 
 
     double m[12]; 
     Mat M(4, 3, CV_64F, m); 
     for (int i = 0; i < rx.size(); i++)
     {
-        _rvecs.create(3, 1, CV_64F, i * 2, true); 
-        _tvecs.create(3, 1, CV_64F, i * 2, true); 
-        _rvecs.create(3, 1, CV_64F, i * 2 + 1, true); 
-        _tvecs.create(3, 1, CV_64F, i * 2 + 1, true); 
-        
-        Mat rvec = (Mat_<double>(3, 1) << rx[i], ry[i], rz[i]); 
+        Mat rvec; 
+        rvec = (Mat_<double>(3, 1) << rx[i], ry[i], rz[i]); 
         rvec *= angle; 
 
         Mat tvec; 
         four_point_get_M(k1, k2, k3, x1, y1, x2, y2, rx[i], ry[i], rz[i], m); 
         SVD::solveZ(M, tvec); 
 
-        rvec.copyTo(_rvecs.getMat(i * 2)); 
-        tvec.copyTo(_tvecs.getMat(i * 2)); 
+        _rvecs.getMat().col(i * 2) = rvec * 1.0; 
+        _tvecs.getMat().col(i * 2) = tvec * 1.0; 
+        _rvecs.getMat().col(i * 2 + 1) = rvec * 1.0; 
+        _tvecs.getMat().col(i * 2 + 1) = -tvec * 1.0; 
 
-        tvec = -tvec; 
-        rvec.copyTo(_rvecs.getMat(i * 2 + 1)); 
-        tvec.copyTo(_tvecs.getMat(i * 2 + 1)); 
+/*        rvec = (Mat_<double>(3, 1) << -rx[i], -ry[i], -rz[i]); 
+        rvec *= angle; 
+
+        four_point_get_M(k1, k2, k3, x1, y1, x2, y2, -rx[i], -ry[i], -rz[i], m); 
+        SVD::solveZ(M, tvec); 
+
+        _rvecs.getMat().col(i * 4 + 2) = rvec * 1.0; 
+        _tvecs.getMat().col(i * 4 + 2) = tvec * 1.0; 
+        _rvecs.getMat().col(i * 4 + 3) = rvec * 1.0; 
+        _tvecs.getMat().col(i * 4 + 3) = -tvec * 1.0; 
+*/
+
+
     }
 
 }
@@ -283,7 +291,7 @@ protected:
 }; 
 
 CvFourPointEstimator::CvFourPointEstimator( double _angle )
-: CvModelEstimator2( 4, cvSize(6, 1),  200 ), 
+: CvModelEstimator2( 4, cvSize(6, 1),  400 ), 
   angle( _angle ) 
 {
 }
@@ -296,17 +304,19 @@ int CvFourPointEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _r
 	Mat Q1 = Mat(q1).reshape(1, q1->cols); 
 	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
 
-    std::vector<Mat> rvecs, tvecs; 
+    Mat rvecs, tvecs; 
     four_point_numerical(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
+    rvecs = rvecs.t(); 
+    tvecs = tvecs.t(); 
     double * rt = _rvec_tvec->data.db; 
 
-    for (int i = 0; i < rvecs.size(); i++)
+    for (int i = 0; i < rvecs.rows; i++)
     {
-        memcpy(rt + i * 6, rvecs.at(i).ptr<double>(), 3 * sizeof(double)); 
-        memcpy(rt + i * 6 + 3, tvecs.at(i).ptr<double>(), 3 * sizeof(double)); 
+        memcpy(rt + i * 6, rvecs.ptr<double>(i), 3 * sizeof(double)); 
+        memcpy(rt + i * 6 + 3, tvecs.ptr<double>(i), 3 * sizeof(double)); 
     }
  
-    return rvecs.size(); 
+    return rvecs.rows; 
 
 }
 
@@ -356,7 +366,7 @@ void CvFourPointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
 
 void findPose4pt_numerical(cv::InputArray _points1, cv::InputArray _points2, 
               double angle, double focal, cv::Point2d pp, 
-              cv::OutputArrayOfArrays _rvecs, cv::OutputArrayOfArrays _tvecs, 
+              cv::OutputArray _rvecs, cv::OutputArray _tvecs, 
               int method, double prob, double threshold, OutputArray _mask) 
 {
 	Mat points1, points2; 
@@ -419,21 +429,42 @@ void findPose4pt_numerical(cv::InputArray _points1, cv::InputArray _points2,
         }
     
 
-        _rvecs.create(2, 1, CV_64FC3); 
-        _tvecs.create(2, 1, CV_64FC3); 
-        
-        _rvecs.create(3, 1, CV_64F, 0, true); 
-        _tvecs.create(3, 1, CV_64F, 0, true); 
+        if (fabs(angle) < CV_PI / 180.0 * 2.0)
+        {
+            _rvecs.create(3, 4, CV_64F, -1, true); 
+            _tvecs.create(3, 4, CV_64F, -1, true); 
+    
+            _rvecs.getMat().col(0) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(0) = rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            _rvecs.getMat().col(1) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(1) = -rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            Mat rvec = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            Mat tvec = rvec_tvec.colRange(3, 6).t() * 1.0; 
+            Mat rmat1, rmat2; 
+            Rodrigues(rvec, rmat1); 
+            Rodrigues(-rvec, rmat2); 
+            tvec = rmat2 * rmat1.t() * tvec; 
 
-        _rvecs.create(3, 1, CV_64F, 1, true); 
-        _tvecs.create(3, 1, CV_64F, 1, true); 
-        
-        Mat(rvec_tvec.colRange(0, 3).t()).copyTo(_rvecs.getMat(0)); 
-        Mat(rvec_tvec.colRange(0, 3).t()).copyTo(_rvecs.getMat(1)); 
+            _rvecs.getMat().col(2) = -rvec * 1.0; 
+            _tvecs.getMat().col(2) = tvec * 1.0; 
+    
+            _rvecs.getMat().col(3) = -rvec * 1.0; 
+            _tvecs.getMat().col(3) = -tvec * 1.0; 
+        }
+        else 
+        {
+            _rvecs.create(3, 2, CV_64F, -1, true); 
+            _tvecs.create(3, 2, CV_64F, -1, true); 
+    
+            _rvecs.getMat().col(0) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(0) = rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            _rvecs.getMat().col(1) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(1) = -rvec_tvec.colRange(3, 6).t() * 1.0; 
 
-        Mat(rvec_tvec.colRange(3, 6).t()).copyTo(_tvecs.getMat(0));  
-        Mat(-rvec_tvec.colRange(3, 6).t()).copyTo(_tvecs.getMat(1));  
-
+        }
     }
 
 
