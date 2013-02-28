@@ -5,7 +5,6 @@
 #include "five-point.hpp"
 #include "four-point-numerical.hpp"
 #include "one-point.hpp"
-#include "selectPose.hpp"
 
 #include "sparse_graph/SparseGraph.h"
 #include "sparse_graph/Odometer.h"

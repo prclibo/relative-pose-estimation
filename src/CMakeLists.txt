@@ -12,8 +12,7 @@ add_library( one-point
     precomp.cpp
     modelest.cpp )
 
-add_library( four-point-groebner
-    four-point-groebner.cpp )
+
 
 target_link_libraries(four-point-numerical ${OpenCV_LIBS} gsl gslcblas m)
 

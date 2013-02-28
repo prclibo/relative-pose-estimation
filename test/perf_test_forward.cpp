@@ -89,7 +89,7 @@ int main()
             std::cout << rvec /norm(rvec) << std::endl; */
 //            exit(0); 
         
-            std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+            Mat rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
             four_point_numerical(x1s.rowRange(0, 4), x2s.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt, tvecs_4pt); 
             four_point_numerical(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
     
@@ -102,22 +102,22 @@ int main()
             }
             
             int k; 
-            for (k = 0; k < rvecs_4pt.size(); k++)
+            for (k = 0; k < rvecs_4pt.cols; k++)
             {
-                if (norm(rvecs_4pt[k], rvec) + norm(tvecs_4pt[k], tvec) < 1e-5) break; 
+                if (norm(rvecs_4pt.col(k), rvec) + norm(tvecs_4pt.col(k), tvec) < 1e-5) break; 
             }
-            if (k >= rvecs_4pt.size()) continue; 
+            if (k >= rvecs_4pt.cols) continue; 
 
             double min_dist = 1e100; 
             int index; 
-            for (int k = 0; k < rvecs_4pt_noise.size(); k++)
-                if (norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]) < min_dist)
+            for (int k = 0; k < rvecs_4pt_noise.cols; k++)
+                if (norm(rvec, rvecs_4pt_noise.col(k)) + norm(tvec, tvecs_4pt_noise.col(k)) < min_dist)
                 {
-                    min_dist = norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]); 
+                    min_dist = norm(rvec, rvecs_4pt_noise.col(k)) + norm(tvec, tvecs_4pt_noise.col(k)); 
     
                     index = k; 
                 }
-            double temp = tvecs_4pt_noise[index].dot(tvec); 
+            double temp = tvecs_4pt_noise.col(index).dot(tvec); 
             t_angle_4pt.back().push_back(acos(temp > 1 ? 1 : temp)); 
 
             /*******************************************************/

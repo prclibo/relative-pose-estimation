@@ -1,4 +1,11 @@
-include_directories(/usr/include/eigen3/)
+find_package( OpenCV REQUIRED )
+
+include_directories(../eigen/)
+include_directories(../four-point-groebner/)
+include_directories(../four-point-numerical/)
+include_directories(../five-point-nister/)
+include_directories(../five-point-groebner/)
+include_directories(../one-point/)
 
 add_executable( perf_test_sideway perf_test_sideway.cpp ) 
 
@@ -29,14 +36,14 @@ add_executable( test_1pt
 add_executable( test_4pt_groebner
                 test_4pt_groebner.cpp )
 
-target_link_libraries( perf_test_sideway five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_sideway2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_forward five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_forward2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_odonoise2 five-point four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
-target_link_libraries( perf_test_vcharge five-point four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
-target_link_libraries( perf_test_vcharge2 five-point four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
-target_link_libraries( perf_test_timing five-point four-point-numerical four-point-groebner
+target_link_libraries( perf_test_sideway five-point-nister four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_sideway2 five-point-nister four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_forward five-point-nister four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_forward2 five-point-nister four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_odonoise2 five-point-nister four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
+target_link_libraries( perf_test_vcharge five-point-nister four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
+target_link_libraries( perf_test_vcharge2 five-point-nister four-point-numerical one-point ${OpenCV_LIBS} gsl gslcblas m boost_filesystem boost_system )
+target_link_libraries( perf_test_timing five-point-nister four-point-numerical four-point-groebner
     ${OpenCV_LIBS} 
     ${CHOLMOD_LIBRARIES} 
     ${AMD_LIBRARY} 
