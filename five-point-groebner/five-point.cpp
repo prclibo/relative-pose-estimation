@@ -2,7 +2,7 @@
 #include "precomp.hpp"
 #include "_modelest.h"
 
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include "five-point.hpp"
