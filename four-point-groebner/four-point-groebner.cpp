@@ -2,7 +2,7 @@
 #include <Eigen/Eigen>
 
 #include <Eigen/SparseQR>
-#include <Eigen/SPQRSupport>
+//#include <Eigen/SPQRSupport>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
@@ -73,6 +73,7 @@ void four_point_groebner(cv::InputArray _points1, cv::InputArray _points2,
 
     SparseMatrix< double > MLeft = M.innerVectors(0, M.rows()); 
     Matrix< double , Dynamic, Dynamic> MRight = M.innerVectors(M.rows(), M.cols() - M.rows()); 
+
 
 /*    SPQR<SparseMatrix< double > > spqr(MLeft); 
     Matrix< double , Dynamic, Dynamic> B(MRight.rows(), MRight.cols()); 
