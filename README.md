@@ -5,7 +5,7 @@ Relative Pose Estimation Package
 This package contains some widely used relative pose estimation algorithm, which include the following algorithm. APIs of the algorithms all follows OpenCV data type. In addition, the RANSAC framework code is from OpenCV library. 
 
 Four-point algorithm (Numerical solver)
-==========
+----------
 
 A numerical solver for the 4-point relative pose estimation algorithm. 
 
@@ -21,7 +21,7 @@ Dependency: OpenCV 2.4, GSL Library
 Remarks: When running the compiled code, some may have problems like this "symbol lookup error: /usr/lib/libgsl.so.0: undefined symbol: cblas\_dnrm2". This problem is caused by binutils-gold linker. To solve it, run apt-get remove binutils-gold in terminal. 
 
 Four-point algorithm (Groebner basis solver)
-==========
+----------
 
 A Groebner basis based solver for the 4-point relative pose estimation algorithm. 
 
@@ -37,7 +37,7 @@ Dependency: OpenCV 2.4, Eigen (Contained in this package)
 Remarks: The code uses SparseQR, a new function from Eigen repo to computer QR decomposition for sparse matrix. You can also try using SPQRSupport from Eigen to call the suitesparse library for QR decomposition. See the code comment for details. 
 
 One-point algorithm 
-==========
+----------
 
 A simple 1-point algorithm implementation. Based on the paper: 
 D. Scaramuzza, “1-point-ransac structure from motion for vehicle-mounted cameras by exploiting non-holonomic constraints,” International journal of computer vision, vol. 95, no. 1, pp. 74–85, 2011.
@@ -52,7 +52,7 @@ API: void findPose1pt(cv::InputArray points1, cv::InputArray points2,
 Dependency: OpenCV 2.4
 
 Five-point algorithm (Nister's solver)
-==========
+----------
 
 A implementation of the famous 5-point algorithm. It is based on solver in the paper: 
 D. Nister, “An efficient solution to the five-point relative pose problem,” Pattern Analysis and Machine Intelligence, IEEE Transactions on, vol. 26, no. 6, pp. 756–770, 2004. 
@@ -68,7 +68,7 @@ Dependency: OpenCV 2.4
 
 
 Five-point algorithm (Groebner basis solver)
-==========
+----------
 
 Another implementation of the famous 5-point algorithm. It is based on solver in the paper: 
 H. Stewenius, C. Engels, and D. Nister, “Recent developments on direct relative orientation,” ISPRS Journal of Photogrammetry and Remote Sensing, vol. 60, no. 4, pp. 284–294, 2006.
