@@ -1,12 +1,12 @@
 Relative Pose Estimation Package
 ==========
 
-This package contains some widely used relative pose estimation algorithm, which include the following algorithm. APIs of the algorithms all follows OpenCV data type. In addition, the RANSAC framework code is from OpenCV library. 
+This package contains some widely used relative pose estimation algorithm, which include the following algorithm. APIs of the algorithms all follows OpenCV data type. In addition, the RANSAC framework code is from OpenCV library. These algorithms accept feature point correspondences detected from images. This is the same with the well-known OpenCV function `cv::findFundamentalMat()`. Meanwhile, focal length and principle point (pp) have to be also passed to the functions. 
 
 Four-point algorithm (Numerical solver)
 ----------
 
-* A numerical solver for the 4-point relative pose estimation algorithm. 
+* A numerical solver for the 4-point relative pose estimation algorithm. Returns two 3xn matrices. Each column of the matrices is a possible corresponding solution of rotation vector and translation vector. 
 
 * **Folder**: four-point-numerical/
 
@@ -22,7 +22,7 @@ Four-point algorithm (Numerical solver)
 Four-point algorithm (Groebner basis solver)
 ----------
 
-* A Groebner basis based solver for the 4-point relative pose estimation algorithm. 
+* A Groebner basis based solver for the 4-point relative pose estimation algorithm. Returns two 3xn matrices. Each column of the matrices is a possible corresponding solution of rotation vector and translation vector. 
 
 * **Folder**: four-point-groebner/
 
@@ -38,8 +38,8 @@ Four-point algorithm (Groebner basis solver)
 One-point algorithm 
 ----------
 
-* A simple 1-point algorithm implementation. Based on the paper: 
-D. Scaramuzza, “1-point-ransac structure from motion for vehicle-mounted cameras by exploiting non-holonomic constraints,” International journal of computer vision, vol. 95, no. 1, pp. 74–85, 2011.
+* A simple 1-point algorithm implementation. Returns two 3xn matrices. Each column of the matrices is a possible corresponding solution of rotation vector and translation vector. This is based on the paper: D. Scaramuzza, “1-point-ransac structure from motion for vehicle-mounted cameras by exploiting non-holonomic constraints,” International journal of computer vision, vol. 95, no. 1, pp. 74–85, 2011.
+
 
 * **Folder**: one-point/
 
@@ -53,8 +53,7 @@ D. Scaramuzza, “1-point-ransac structure from motion for vehicle-mounted camer
 Five-point algorithm (Nister's solver)
 ----------
 
-* A implementation of the famous 5-point algorithm. It is based on solver in the paper: 
-D. Nister, “An efficient solution to the five-point relative pose problem,” Pattern Analysis and Machine Intelligence, IEEE Transactions on, vol. 26, no. 6, pp. 756–770, 2004. 
+* A implementation of the famous 5-point algorithm. Returns the estimated essential matrix. It is based on solver in the paper: D. Nister, “An efficient solution to the five-point relative pose problem,” Pattern Analysis and Machine Intelligence, IEEE Transactions on, vol. 26, no. 6, pp. 756–770, 2004. 
 The code also refers to the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
 
 * **Folder**: five-point-nister/
@@ -69,7 +68,7 @@ The code also refers to the Matlab implementation from http://www.vis.uky.edu/~s
 Five-point algorithm (Groebner basis solver)
 ----------
 
-* Another implementation of the famous 5-point algorithm. It is based on solver in the paper: 
+* Another implementation of the famous 5-point algorithm. Returns the estimated essential matrix. It is based on solver in the paper: 
 H. Stewenius, C. Engels, and D. Nister, “Recent developments on direct relative orientation,” ISPRS Journal of Photogrammetry and Remote Sensing, vol. 60, no. 4, pp. 284–294, 2006.
 The code also refers to the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
 
