@@ -34,9 +34,15 @@ int main()
             0.0182834317083, -0.992572449041,  0.120273228645,  0.592218078391, 
             0, 0, 0, 1; 
 
+    Mat H_c2o_cv, R_c2o, t_c2o; 
+    eigen2cv(H_c2o, H_c2o_cv); 
+    R_c2o = H_c2o_cv(Range(0, 3), Range(0, 3)) * 1.0; 
+    t_c2o = H_c2o_cv(Range(0, 3), Range(3, 4)) * 1.0; 
+
 
     SparseGraph sg; 
-    sg.readFromFile("../../v-charge-data/long_loop/frames.xml"); 
+    sg.readFromFile("../../v-charge-data/grobi_new/frames.xml"); 
+//    sg.readFromFile("../../v-charge-data/long_loop/frames.xml"); 
 //    sg.readFromFile("../../v-charge-data/more_loop/frames.xml"); 
 
 
@@ -67,7 +73,7 @@ int main()
                 pose_gps_prev = sg.frameSegments(ci).at(s - 1).back()->gps_ins()->pose();  
                 pose_odo_prev = sg.frameSegments(ci).at(s - 1).back()->odometer()->pose(); 
                 angle_odo = fs.at(i)->odometer()->yaw() - sg.frameSegments(ci).at(s - 1).back()->odometer()->yaw(); 
-                std::cout << fs.at(i)->odometer()->yaw() << " - " << sg.frameSegments(ci).at(s - 1).back()->odometer()->yaw(); 
+//                std::cout << fs.at(i)->odometer()->yaw() << " - " << sg.frameSegments(ci).at(s - 1).back()->odometer()->yaw(); 
 //                std::cout << "=" << angle_odo << std::endl; 
             }
             else
@@ -75,7 +81,7 @@ int main()
                 pose_gps_prev = fs.at(i - 1)->gps_ins()->pose();  
                 pose_odo_prev = fs.at(i - 1)->odometer()->pose(); 
                 angle_odo = fs.at(i)->odometer()->yaw() - fs.at(i - 1)->odometer()->yaw(); 
-                std::cout << fs.at(i)->odometer()->yaw() << " - " << fs.at(i - 1)->odometer()->yaw(); 
+//                std::cout << fs.at(i)->odometer()->yaw() << " - " << fs.at(i - 1)->odometer()->yaw(); 
 //                std::cout << "=" << angle_odo << std::endl; 
             } 
 //            continue; 
@@ -122,6 +128,9 @@ int main()
 
             double angle_gps = norm(r_cfg_cv) * (r_cfg_cv.at<double>(1) < 0 ? 1 : -1); 
     
+//            H_cfo = H_cfo * H_c2o.inverse(); 
+//            H_cfg = H_cfg * H_c2o.inverse(); 
+
             Vector3d C_cfo = H_cfo.inverse().block<3, 1>(0, 3); 
             Vector3d C_cfg = H_cfg.inverse().block<3, 1>(0, 3); 
     //        C_cfo = H_o.inverse().block<3, 1>(0, 3); 
@@ -182,7 +191,7 @@ int main()
             std::cout << angle_odo << std::endl; 
     //        std::cout << countNonZero(mask) << " / " << mask.total() << "   "; 
             Mat R_4pt_odo, t_4pt_odo; 
-            if (angle_odo * rvecs_4pt_odo.at<double>(1, 0) > 0)
+            if (1 || angle_odo * rvecs_4pt_odo.at<double>(1, 0) > 0)
             {
 //                std::cout << "refer = " << rvecs_4pt_odo.col(0) << std::endl; 
 //                std::cout << "real = " << rvecs_4pt_odo.col(0) << std::endl; 
@@ -263,6 +272,11 @@ int main()
             pose_4pt_odo = H_4pt_odo * pose_4pt_odo; 
             pose_4pt_gps = H_4pt_gps * pose_4pt_gps; 
             pose_1pt = H_1pt * pose_1pt; 
+
+/*            pose_5pt = pose_5pt * H_c2o_cv.inv(); 
+            pose_4pt_odo = pose_4pt_odo * H_c2o_cv.inv(); 
+            pose_4pt_gps = pose_4pt_gps * H_c2o_cv.inv(); 
+            pose_1pt = pose_1pt * H_c2o_cv.inv(); */
             
             if (n == start)
             {
@@ -277,6 +291,12 @@ int main()
             Mat C_4pt_odo = Mat(pose_4pt_odo.inv())(Range(0, 3), Range(3, 4)) * 1.0; 
             Mat C_4pt_gps = Mat(pose_4pt_gps.inv())(Range(0, 3), Range(3, 4)) * 1.0; 
             Mat C_1pt = Mat(pose_1pt.inv())(Range(0, 3), Range(3, 4)) * 1.0; 
+            
+/*            C_5pt = R_c2o * C_5pt + t_c2o; 
+            C_4pt_odo = R_c2o * C_4pt_odo + t_c2o; 
+            C_4pt_gps = R_c2o * C_4pt_gps + t_c2o; 
+            C_1pt = R_c2o * C_1pt + t_c2o; */
+
     
             std::cout << "c_cfo(" << n + 1 - start << ", :) = [" << C_cfo.transpose() << "]; " << std::endl; 
             std::cout << "c_cfg(" << n + 1 - start << ", :) = [" << C_cfg.transpose() << "]; " << std::endl; 
@@ -287,6 +307,7 @@ int main()
             n++; 
         }
     }
+
     std::cout << "h = figure; " << std::endl; 
     std::cout << "plot(c_cfg(:, 3), -c_cfg(:, 1), '-', 'color', [1, 1, 1] * 0.7, 'linewidth', 10, 'markersize', 2), hold on" << std::endl; 
     std::cout << "plot(c_cfo(:, 3), c_cfo(:, 1), '-', 'color', [1, 1, 1] * 0.4, 'linewidth', 5, 'markersize', 2), hold on" << std::endl; 
