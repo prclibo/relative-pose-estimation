@@ -30,6 +30,8 @@ add_executable( perf_test_vcharge2
 
 add_executable( perf_test_timing perf_test_timing.cpp ) 
 
+add_executable( perf_test_failure perf_test_failure.cpp ) 
+
 add_executable( test_1pt
                 test_1pt.cpp) 
 
@@ -55,6 +57,8 @@ target_link_libraries( perf_test_timing five-point-nister four-point-numerical f
     cholmod
     blas
     spqr)
+
+target_link_libraries( perf_test_failure four-point-numerical ${OpenCV_LIBS} gsl gslcblas m )
  
 target_link_libraries( test_1pt one-point ${OpenCV_LIBS})
 target_link_libraries( test_4pt_groebner four-point-groebner ${OpenCV_LIBS})
