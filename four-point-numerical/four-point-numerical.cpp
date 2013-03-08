@@ -429,7 +429,7 @@ void findPose4pt_numerical(cv::InputArray _points1, cv::InputArray _points2,
         }
     
 
-        if (fabs(angle) < CV_PI / 180.0 * 2.0)
+        if (false && fabs(angle) < CV_PI / 180.0 * 2.0)
         {
             _rvecs.create(3, 4, CV_64F, -1, true); 
             _tvecs.create(3, 4, CV_64F, -1, true); 
