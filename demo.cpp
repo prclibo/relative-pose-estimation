@@ -52,6 +52,7 @@ int main()
     
     Mat rvecs_4pt_nm, tvecs_4pt_nm; 
     findPose4pt_numerical(x1s, x2s, norm(rvec), focal, pp, rvecs_4pt_nm, tvecs_4pt_nm, CV_RANSAC, 0.99, 1, noArray() ); 
+    std::cout << "=====================================================" << std::endl; 
     std::cout << "4-pt-nm rvec: " << std::endl; 
     std::cout << rvecs_4pt_nm.t() << std::endl; 
     std::cout << "4-pt-nm tvec: " << std::endl; 
@@ -59,9 +60,24 @@ int main()
 
     Mat rvecs_4pt_gb, tvecs_4pt_gb; 
     findPose4pt_groebner(x1s, x2s, norm(rvec), focal, pp, rvecs_4pt_gb, tvecs_4pt_gb, CV_RANSAC, 0.99, 1, noArray() ); 
+    std::cout << "=====================================================" << std::endl; 
     std::cout << "4-pt-gb rvec: " << std::endl; 
     std::cout << rvecs_4pt_gb.t() << std::endl; 
     std::cout << "4-pt-gb tvec: " << std::endl; 
     std::cout << tvecs_4pt_gb.t() << std::endl; 
+
+    Mat E = findEssentialMat(x1s, x2s, focal, pp, CV_RANSAC, 0.99, 1, noArray() ); 
+    std::cout << "=====================================================" << std::endl; 
+    Mat R1_5pt, R2_5pt, tvec_5pt, rvec1_5pt, rvec2_5pt; 
+    decomposeEssentialMat(E, R1_5pt, R2_5pt, tvec_5pt); 
+    Rodrigues(R1_5pt, rvec1_5pt); 
+    Rodrigues(R2_5pt, rvec2_5pt); 
+    std::cout << "5-pt-nister rvec: " << std::endl; 
+    std::cout << rvec1_5pt << std::endl; 
+    std::cout << rvec2_5pt << std::endl; 
+    std::cout << "5-pt-nister tvec: " << std::endl; 
+    std::cout << tvec_5pt << std::endl; 
+    std::cout << -tvec_5pt << std::endl; 
+
 
 }
