@@ -87,3 +87,15 @@ The code also refers to the Matlab implementation from http://www.vis.uky.edu/~s
 
 * **Dependency**: OpenCV 2.4, Eigen (Contained in the package)
 
+
+Small demo and compilation
+----------
+
+You can compile the whole package like this: 
+
+    {path}$mkdir build
+    {path}$cd build
+    {path}/build$cmake ..
+    {path}/build$make
+
+`demo.cpp` is a small demo which show how to call the APIs. Each sub-module is independent from each other. Check the `CMakeLists.txt` in each folder and see how they can be used. 
