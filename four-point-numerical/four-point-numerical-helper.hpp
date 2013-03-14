@@ -1,4 +1,20 @@
+/*  
+    Four point algorithm using numerical solver
+    Copyright (C) 2013, Bo Li
 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see http://www.gnu.org/licenses.
+*/
 void four_point_get_M(double k1, double k2, double k3, double x1[4], double y1[4], double x2[4], double y2[4], double rx, double ry, double rz, double M[12])
 {
 M[0] = (y2[0]*(-(1-k1)*rx*rz+k3*ry)+(1-k1)*rx*ry+k3*rz)*x1[0]+(y2[0]*(-(1-k1)*ry*rz-k3*rx)+k1+(1-k1)*ry*ry)*y1[0]+y2[0]*(-k1-(1-k1)*rz*rz)+(1-k1)*ry*rz-k3*rx;
