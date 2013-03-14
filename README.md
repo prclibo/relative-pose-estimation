@@ -59,7 +59,7 @@ A implementation of the famous 5-point algorithm. Returns the estimated essentia
 
 D. Nister, “An efficient solution to the five-point relative pose problem,” Pattern Analysis and Machine Intelligence, IEEE Transactions on, vol. 26, no. 6, pp. 756–770, 2004. 
 
-The code also refers to the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
+The code is based on the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
 
 * **Folder**: five-point-nister/
 
@@ -77,7 +77,7 @@ Another implementation of the famous 5-point algorithm. Returns the estimated es
 
 H. Stewenius, C. Engels, and D. Nister, “Recent developments on direct relative orientation,” ISPRS Journal of Photogrammetry and Remote Sensing, vol. 60, no. 4, pp. 284–294, 2006.
 
-The code also refers to the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
+The code is based on the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
 
 * **Folder**: five-point-groebner/
 
