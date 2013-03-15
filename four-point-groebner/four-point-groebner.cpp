@@ -7,6 +7,9 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
+#include "precomp.hpp"
+#include "_modelest.h"
+
 using namespace cv; 
 using namespace Eigen; 
 
@@ -164,6 +167,197 @@ void four_point_groebner(cv::InputArray _points1, cv::InputArray _points2,
     }
 
     _rvecs.getMat() *= angle; 
+}
+
+
+class CvFourPointGroebnerEstimator : public CvModelEstimator2
+{
+    double angle; 
+public:
+    CvFourPointGroebnerEstimator( double _angle ); 
+    virtual int runKernel( const CvMat* m1, const CvMat* m2, CvMat* model ); 
+protected: 
+    virtual void computeReprojError( const CvMat* m1, const CvMat* m2,
+                                     const CvMat* model, CvMat* error );
+}; 
+
+CvFourPointGroebnerEstimator::CvFourPointGroebnerEstimator( double _angle )
+: CvModelEstimator2( 4, cvSize(6, 1),  400 ), 
+  angle( _angle ) 
+{
+}
+
+
+// Notice to keep compatibility with opencv ransac, q1 and q2 have
+// to be of 1 row x n col x 2 channel. 
+int CvFourPointGroebnerEstimator::runKernel( const CvMat* q1, const CvMat* q2, CvMat* _rvec_tvec )
+{
+	Mat Q1 = Mat(q1).reshape(1, q1->cols); 
+	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
+
+    Mat rvecs, tvecs; 
+    four_point_groebner(Q1, Q2, angle, 1.0, Point2d(0, 0), rvecs, tvecs); 
+    rvecs = rvecs.t(); 
+    tvecs = tvecs.t(); 
+    double * rt = _rvec_tvec->data.db; 
+
+    for (int i = 0; i < rvecs.rows; i++)
+    {
+        memcpy(rt + i * 6, rvecs.ptr<double>(i), 3 * sizeof(double)); 
+        memcpy(rt + i * 6 + 3, tvecs.ptr<double>(i), 3 * sizeof(double)); 
+    }
+ 
+    return rvecs.rows; 
+
+}
+
+
+// Same as the runKernel, m1 and m2 should be
+// 1 row x n col x 2 channels. 
+// And also, error has to be of CV_32FC1. 
+void CvFourPointGroebnerEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
+                                     const CvMat* model, CvMat* error )
+{
+    Mat X1(m1), X2(m2); 
+    int n = X1.cols; 
+    X1 = X1.reshape(1, n); 
+    X2 = X2.reshape(1, n); 
+
+    X1.convertTo(X1, CV_64F); 
+    X2.convertTo(X2, CV_64F); 
+
+    Mat rvec_tvec(model); 
+    Mat rvec = rvec_tvec.colRange(0, 3) * 1.0; 
+    Mat tvec = rvec_tvec.colRange(3, 6) * 1.0; 
+
+    Mat rmat; 
+    Rodrigues(rvec, rmat); 
+
+    double * t = tvec.ptr<double>(); 
+    Mat tskew = (Mat_<double>(3, 3) << 0, -t[2], t[1], t[2], 0, -t[0], -t[1], t[0], 0); 
+
+    Mat E = tskew * rmat; 
+    for (int i = 0; i < n; i++)
+    {
+        Mat x1 = (Mat_<double>(3, 1) << X1.at<double>(i, 0), X1.at<double>(i, 1), 1.0); 
+        Mat x2 = (Mat_<double>(3, 1) << X2.at<double>(i, 0), X2.at<double>(i, 1), 1.0); 
+        double x2tEx1 = x2.dot(E * x1); 
+        Mat Ex1 = E * x1; 
+        Mat Etx2 = E * x2; 
+        double a = Ex1.at<double>(0) * Ex1.at<double>(0); 
+        double b = Ex1.at<double>(1) * Ex1.at<double>(1); 
+        double c = Etx2.at<double>(0) * Etx2.at<double>(0); 
+        double d = Etx2.at<double>(0) * Etx2.at<double>(0); 
+
+        error->data.fl[i] = x2tEx1 * x2tEx1 / (a + b + c + d); 
+    }
+
+}    
+
+void findPose4pt_groebner(cv::InputArray _points1, cv::InputArray _points2, 
+              double angle, double focal, cv::Point2d pp, 
+              cv::OutputArray _rvecs, cv::OutputArray _tvecs, 
+              int method, double prob, double threshold, OutputArray _mask) 
+{
+	Mat points1, points2; 
+	_points1.getMat().copyTo(points1); 
+	_points2.getMat().copyTo(points2); 
+
+	int npoints = points1.checkVector(2);
+    CV_Assert( npoints >= 4 && points2.checkVector(2) == npoints &&
+				              points1.type() == points2.type());
+
+	if (points1.channels() > 1)
+	{
+		points1 = points1.reshape(1, npoints); 
+		points2 = points2.reshape(1, npoints); 
+	}
+	points1.convertTo(points1, CV_64F); 
+	points2.convertTo(points2, CV_64F); 
+
+	points1.col(0) = (points1.col(0) - pp.x) / focal; 
+	points2.col(0) = (points2.col(0) - pp.x) / focal; 
+	points1.col(1) = (points1.col(1) - pp.y) / focal; 
+	points2.col(1) = (points2.col(1) - pp.y) / focal; 
+	
+	// Reshape data to fit opencv ransac function
+	points1 = points1.reshape(2, 1); 
+	points2 = points2.reshape(2, 1); 
+
+	Mat rvec_tvec(1, 6, CV_64F); 
+    CvFourPointGroebnerEstimator estimator(angle); 
+
+	CvMat p1 = points1; 
+	CvMat p2 = points2; 
+	CvMat _rvec_tvec = rvec_tvec; 
+	CvMat* tempMask = cvCreateMat(1, npoints, CV_8U); 
+	
+	assert(npoints >= 4); 
+	threshold /= focal; 
+    int count = 1; 
+    if (npoints == 4)
+    {
+        four_point_groebner(_points1, _points2, angle, focal, pp, _rvecs, _tvecs); 
+        Mat(tempMask).setTo(true); 
+    }
+    else 
+    {
+        if (method == CV_RANSAC)
+    	{
+    		estimator.runRANSAC(&p1, &p2, &_rvec_tvec, tempMask, threshold, prob); 
+    	}
+    	else
+    	{
+    		estimator.runLMeDS(&p1, &p2, &_rvec_tvec, tempMask, prob); 
+    	}
+    
+        if (_mask.needed())
+        {
+        	_mask.create(1, npoints, CV_8U, -1, true); 
+        	Mat mask = _mask.getMat(); 
+        	Mat(tempMask).copyTo(mask); 
+        }
+    
+
+        if (false && fabs(angle) < CV_PI / 180.0 * 2.0)
+        {
+            _rvecs.create(3, 4, CV_64F, -1, true); 
+            _tvecs.create(3, 4, CV_64F, -1, true); 
+    
+            _rvecs.getMat().col(0) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(0) = rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            _rvecs.getMat().col(1) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(1) = -rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            Mat rvec = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            Mat tvec = rvec_tvec.colRange(3, 6).t() * 1.0; 
+            Mat rmat1, rmat2; 
+            Rodrigues(rvec, rmat1); 
+            Rodrigues(-rvec, rmat2); 
+            tvec = rmat2 * rmat1.t() * tvec; 
+
+            _rvecs.getMat().col(2) = -rvec * 1.0; 
+            _tvecs.getMat().col(2) = tvec * 1.0; 
+    
+            _rvecs.getMat().col(3) = -rvec * 1.0; 
+            _tvecs.getMat().col(3) = -tvec * 1.0; 
+        }
+        else 
+        {
+            _rvecs.create(3, 2, CV_64F, -1, true); 
+            _tvecs.create(3, 2, CV_64F, -1, true); 
+    
+            _rvecs.getMat().col(0) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(0) = rvec_tvec.colRange(3, 6).t() * 1.0; 
+    
+            _rvecs.getMat().col(1) = rvec_tvec.colRange(0, 3).t() * 1.0; 
+            _tvecs.getMat().col(1) = -rvec_tvec.colRange(3, 6).t() * 1.0; 
+
+        }
+    }
+
+
 }
 
 

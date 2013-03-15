@@ -1,5 +1,5 @@
-#ifndef FOUR_POINT_HPP
-#define FOUR_POINT_HPP
+#ifndef FOUR_POINT_NUMERICAL_HPP
+#define FOUR_POINT_NUMERICAL_HPP
 
 #include <opencv2/opencv.hpp>
 
