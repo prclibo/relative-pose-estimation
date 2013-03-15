@@ -155,18 +155,18 @@ void solve_roots(const vector<double> & a, const vector<double> & b, vector<doub
         while (iter++ < n_iters)
         {
             iterate_status = gsl_multiroot_fdfsolver_iterate(solver); 
-            if (iterate_status) break; 
             residual_status = gsl_multiroot_test_residual(solver->f, residual_threshold); 
             delta_status = gsl_multiroot_test_delta(solver->dx, solver->x, delta_threshold, 0); 
             if (residual_status == GSL_SUCCESS && delta_status == GSL_SUCCESS) break;
+            if (iterate_status) break; 
             
         }
 //        printf ("status = %s\n", gsl_strerror (status));
 //        printf("f = %e %e\n", gsl_vector_get(solver->f, 0), gsl_vector_get(solver->f, 1)); 
 //        std::cout << gsl_strerror(iterate_status) << "\n " << gsl_strerror(residual_status) << "\n " << gsl_strerror(delta_status) << std::endl; 
         if (//iterate_status == GSL_SUCCESS && 
-            residual_status == GSL_SUCCESS /*&&  
-            delta_status == GSL_SUCCESS */)
+            residual_status == GSL_SUCCESS &&  
+            delta_status == GSL_SUCCESS )
         {
             double t0, t1; 
             int j, k; 
