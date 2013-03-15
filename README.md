@@ -57,7 +57,7 @@ D. Scaramuzza, “1-point-ransac structure from motion for vehicle-mounted camer
 
 * **Dependency**: OpenCV 2.4
 
-Five-point algorithm (Nister's solver)
+Five-point algorithm 
 ----------
 
 A implementation of the famous 5-point algorithm. Returns the estimated essential matrix. It is based on solver in the paper: 
@@ -73,25 +73,6 @@ The code is based on the Matlab implementation from http://www.vis.uky.edu/~stew
 					double prob = 0.999, double threshold = 1, OutputArray mask = noArray() ); `
 
 * **Dependency**: OpenCV 2.4
-
-
-Five-point algorithm (Groebner basis solver)
-----------
-
-Another implementation of the famous 5-point algorithm. Returns the estimated essential matrix. It is based on solver in the paper: 
-
-H. Stewenius, C. Engels, and D. Nister, “Recent developments on direct relative orientation,” ISPRS Journal of Photogrammetry and Remote Sensing, vol. 60, no. 4, pp. 284–294, 2006.
-
-The code is based on the Matlab implementation from http://www.vis.uky.edu/~stewe/FIVEPOINT/. 
-
-* **Folder**: five-point-groebner/
-
-* **API**: `Mat findEssentialMat( InputArray points1, InputArray points2, double focal = 1.0, Point2d pp = Point2d(0, 0), 
-					int method = CV_RANSAC, 
-					double prob = 0.999, double threshold = 1, OutputArray mask = noArray() ); `
-
-* **Dependency**: OpenCV 2.4, Eigen (Contained in the package)
-
 
 Small demo and compilation
 ----------
