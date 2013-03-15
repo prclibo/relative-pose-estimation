@@ -1,6 +1,6 @@
 /*  
     Four point algorithm using Groebner basis solver
-    Copyright (C) 2013, Bo Li
+    Copyright (C) 2013, Bo Li, prclibo@gmail.com
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
