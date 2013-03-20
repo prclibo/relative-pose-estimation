@@ -276,10 +276,6 @@ int CvEMEstimator::runKernel( const CvMat* m1, const CvMat* m2, CvMat* model )
 // to be of 1 row x n col x 2 channel. 
 int CvEMEstimator::run5Point( const CvMat* q1, const CvMat* q2, CvMat* ematrix )
 {
-	// Notice to keep notion consistence with our reference Matlab code, 
-	// in this function Q1 denotes right points while Q2 left. 
-	// Therefore, left q1 and right q2 are swap to Q2 and Q1. 
-	// Q1 and Q2 are Nx2 (with omitted third coord as 1). 
 	Mat Q1 = Mat(q1).reshape(1, q1->cols); 
 	Mat Q2 = Mat(q2).reshape(1, q2->cols); 
 
