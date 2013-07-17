@@ -213,6 +213,10 @@ int recoverPose( const Mat & E, InputArray _points1, InputArray _points2, Mat & 
 		bitwise_and(mask, mask3, mask3); 
 		bitwise_and(mask, mask4, mask4); 
     }
+    if (_mask.empty() && _mask.needed())
+    {
+        _mask.create(mask1.size(), CV_8U); 
+    }
 
 	int good1 = countNonZero(mask1); 
 	int good2 = countNonZero(mask2); 
