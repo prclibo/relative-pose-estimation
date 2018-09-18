@@ -6,6 +6,7 @@
 #include "_modelest.h"
 
 using namespace cv; 
+using namespace std;
 
 void truncate(double & t)
 {

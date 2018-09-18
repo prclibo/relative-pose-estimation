@@ -96,7 +96,8 @@ int main()
 //                double angle = norm(rvec) + rng.gaussian(odo_sigma); 
                 double angle = norm(rvec) * (1.0 + rng.gaussian(odo_sigma)); 
     
-                std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+                // std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+                Mat rvecs_4pt_noise, tvecs_4pt_noise;
                 findPose4pt_numerical(x1s_noise, x2s_noise, angle, focal, cv::Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise, CV_RANSAC, 0.99, 1, cv::noArray()); 
         
                 tvec /= norm(tvec); 
@@ -108,14 +109,14 @@ int main()
                 
                 double min_dist = 1e100; 
                 int index; 
-                for (int k = 0; k < rvecs_4pt_noise.size(); k++)
-                    if (norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]) < min_dist)
+                for (int k = 0; k < rvecs_4pt_noise.cols; k++)
+                    if (norm(rvec, rvecs_4pt_noise.col(k)) + norm(tvec, tvecs_4pt_noise.col(k)) < min_dist)
                     {
-                        min_dist = norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]); 
+                        min_dist = norm(rvec, rvecs_4pt_noise.col(k)) + norm(tvec, tvecs_4pt_noise.col(k)); 
         
                         index = k; 
                     }
-                double temp = tvecs_4pt_noise[index].dot(tvec); 
+                double temp = tvecs_4pt_noise.col(index).dot(tvec); 
                 t_angle_4pt.back().push_back(acos(temp > 1 ? 1 : temp)); 
     
                 /*******************************************************/

@@ -41,8 +41,11 @@ int main()
         t_angle_4pt.push_back(vector<double>());         
         t_angle_4pt_gb.push_back(vector<double>());         
         t_angle_5pt.push_back(vector<double>());         
-        for (int i = 0; i < 1000; i++)
+
+
+        for (int i = 0; i < 100; i++)
         {    
+            std::cerr << i << std::endl;
             Mat rvec(3, 1, CV_64F), tvec(3, 1, CV_64F), cvec(3, 1, CV_64F); 
             rng.fill(rvec, RNG::UNIFORM, -angle_bound, angle_bound); 
             rng.fill(cvec, RNG::UNIFORM, -baseline, baseline); 
@@ -93,10 +96,14 @@ int main()
             rng.fill(noise2, RNG::NORMAL, 0, sigma); 
             Mat x2s_noise = x2s + noise2; 
 
-            std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+            // std::vector<Mat> rvecs_4pt, tvecs_4pt, rvecs_4pt_noise, tvecs_4pt_noise; 
+            Mat rvecs_4pt_noise, tvecs_4pt_noise;
   
             markTime(); 
-            four_point_numerical(x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4), norm(rvec), focal, Point2d(0, 0), rvecs_4pt_noise, tvecs_4pt_noise); 
+            four_point_numerical(
+                    x1s_noise.rowRange(0, 4), x2s_noise.rowRange(0, 4),
+                    norm(rvec), focal, Point2d(0, 0),
+                    rvecs_4pt_noise, tvecs_4pt_noise); 
             compTime_4pt_nm.push_back( markTime() ); 
     
             tvec /= norm(tvec); 
@@ -109,14 +116,15 @@ int main()
             
             double min_dist = 1e100; 
             int index; 
-            for (int k = 0; k < rvecs_4pt_noise.size(); k++)
-                if (norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]) < min_dist)
+            for (int k = 0; k < rvecs_4pt_noise.cols; k++)
+                if (norm(rvec, rvecs_4pt_noise.col(k)) +
+                        norm(tvec, tvecs_4pt_noise.col(k)) < min_dist)
                 {
-                    min_dist = norm(rvec, rvecs_4pt_noise[k]) + norm(tvec, tvecs_4pt_noise[k]); 
+                    min_dist = norm(rvec, rvecs_4pt_noise.col(k)) + norm(tvec, tvecs_4pt_noise.col(k)); 
     
                     index = k; 
                 }
-            double temp = tvecs_4pt_noise[index].dot(tvec); 
+            double temp = tvecs_4pt_noise.col(index).dot(tvec); 
             t_angle_4pt.back().push_back(acos(temp > 1 ? 1 : temp)); 
 
             /*******************************************************/

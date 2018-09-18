@@ -1,4 +1,4 @@
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 2 REQUIRED )
 
 add_library( five-point-nister
     five-point.cpp precomp.cpp modelest.cpp )

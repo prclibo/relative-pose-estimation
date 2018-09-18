@@ -1,4 +1,4 @@
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 2 REQUIRED )
 
 add_library( one-point
     one-point.cpp precomp.cpp modelest.cpp )

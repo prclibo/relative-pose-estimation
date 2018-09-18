@@ -1,4 +1,4 @@
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 2 REQUIRED )
 
 add_library( four-point-numerical 
     four-point-numerical.cpp precomp.cpp modelest.cpp  )
