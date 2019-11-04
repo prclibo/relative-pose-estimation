@@ -108,7 +108,7 @@ void CvOnePointEstimator::computeReprojError( const CvMat* m1, const CvMat* m2,
         double a = Ex1.at<double>(0) * Ex1.at<double>(0); 
         double b = Ex1.at<double>(1) * Ex1.at<double>(1); 
         double c = Etx2.at<double>(0) * Etx2.at<double>(0); 
-        double d = Etx2.at<double>(0) * Etx2.at<double>(0); 
+        double d = Etx2.at<double>(1) * Etx2.at<double>(1);
 
         error->data.fl[i] = x2tEx1 * x2tEx1 / (a + b + c + d); 
 
