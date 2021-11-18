@@ -1,3 +1,5 @@
+**Please checkout https://github.com/prclibo/relative_pose for the latest version of OpenCV and Matlab compatible 4-point and 5-point implementation.**
+
 Relative Pose Estimation Package
 ==========
 
